@@ -1,0 +1,65 @@
+/** @type {import('tailwindcss').Config} */
+export default {
+  darkMode: 'class',
+  content: [
+  './index.html',
+  './src/**/*.{js,ts,jsx,tsx}'
+],
+  theme: {
+    extend: {
+      colors: {
+        background: 'hsl(var(--background) / <alpha-value>)',
+        foreground: 'hsl(var(--foreground) / <alpha-value>)',
+        card: 'hsl(var(--card) / <alpha-value>)',
+        cardborder: 'hsl(var(--card-border) / <alpha-value>)',
+        primary: 'hsl(var(--primary) / <alpha-value>)',
+        primaryfg: 'hsl(var(--primary-fg) / <alpha-value>)',
+        secondary: 'hsl(var(--secondary) / <alpha-value>)',
+        muted: 'hsl(var(--muted) / <alpha-value>)',
+        mutedfg: 'hsl(var(--muted-fg) / <alpha-value>)',
+        accent: 'hsl(var(--accent) / <alpha-value>)',
+        destructive: 'hsl(var(--destructive) / <alpha-value>)',
+        hairline: 'hsl(var(--border) / <alpha-value>)',
+        good: 'hsl(var(--good) / <alpha-value>)',
+        warn: 'hsl(var(--warn) / <alpha-value>)',
+        bad: 'hsl(var(--bad) / <alpha-value>)',
+      },
+      fontFamily: {
+        display: ['Outfit', 'system-ui', 'sans-serif'],
+        sans: ['Plus Jakarta Sans', 'system-ui', 'sans-serif'],
+      },
+      fontSize: {
+        largetitle: ['34px', { lineHeight: '41px', letterSpacing: '-0.4px' }],
+        title1: ['28px', { lineHeight: '34px', letterSpacing: '-0.3px' }],
+        title2: ['22px', { lineHeight: '28px', letterSpacing: '-0.2px' }],
+        title3: ['20px', { lineHeight: '25px' }],
+        headline: ['17px', { lineHeight: '22px' }],
+        body: ['17px', { lineHeight: '22px' }],
+        callout: ['16px', { lineHeight: '21px' }],
+        subhead: ['15px', { lineHeight: '20px' }],
+        footnote: ['13px', { lineHeight: '18px' }],
+        caption: ['12px', { lineHeight: '16px' }],
+        tab: ['11px', { lineHeight: '13px' }],
+        section: ['13px', { lineHeight: '18px', letterSpacing: '0.6px' }],
+        money: ['40px', { lineHeight: '46px', letterSpacing: '-0.6px' }],
+      },
+      borderRadius: {
+        card: '16px',
+        'card-lg': '18px',
+        hero: '18px',
+        sheet: '20px',
+        input: '12px',
+      },
+      boxShadow: {
+        thumb: '0 1px 3px rgb(0 0 0 / 0.1)',
+        sheet: '0 -8px 32px rgb(0 0 0 / 0.12)',
+        premium: '0 4px 20px -2px rgba(15, 23, 42, 0.06), 0 2px 6px -1px rgba(15, 23, 42, 0.02)',
+        elevated: '0 10px 30px -4px rgba(15, 23, 42, 0.09), 0 4px 12px -2px rgba(15, 23, 42, 0.04)',
+        tabbar: '0 8px 32px 0 rgba(31, 38, 135, 0.08), 0 2px 8px rgba(0, 0, 0, 0.04)',
+        'glow-primary': '0 0 24px -4px hsl(221 83% 53% / 0.35)',
+        'glow-purple': '0 0 24px -4px hsl(262 83% 68% / 0.35)',
+      },
+    },
+  },
+  plugins: [],
+};
