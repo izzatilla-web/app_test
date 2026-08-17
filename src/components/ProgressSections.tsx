@@ -63,13 +63,19 @@ export function CurriculumSection({
   );
 }
 
-export function ExamsSection({ exams }: { exams: Exam[] }) {
+export function ExamsSection({
+  exams,
+  className = 'px-4'
+}: {
+  exams: Exam[];
+  className?: string;
+}) {
   const { openFullScreen, closeFullScreen } = useUI();
 
   if (exams.length === 0) {
     return (
-      <div className="px-4">
-        <h2 className="mb-2 px-1 font-sans text-xs font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500">
+      <div className={className}>
+        <h2 className="mb-2.5 px-1 font-sans text-xs font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500">
           {t.examsHeader}
         </h2>
         <Card>
@@ -80,8 +86,8 @@ export function ExamsSection({ exams }: { exams: Exam[] }) {
   }
 
   return (
-    <section className="px-4">
-      <h2 className="mb-2 px-1 font-sans text-xs font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500">
+    <section className={className}>
+      <h2 className="mb-2.5 px-1 font-sans text-xs font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500">
         {t.examsHeader}
       </h2>
       <div className="space-y-3">
@@ -90,46 +96,55 @@ export function ExamsSection({ exams }: { exams: Exam[] }) {
           return (
             <div
               key={exam.id}
-              className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm dark:border-slate-800 dark:bg-slate-900"
+              className="rounded-2xl border border-slate-200/90 bg-white p-4 shadow-sm transition-all duration-200 hover:border-slate-300 dark:border-slate-800/90 dark:bg-slate-900 dark:hover:border-slate-700"
             >
+              {/* Top Row: Title, Date & Big Clean Score */}
               <div className="flex items-start justify-between gap-3">
-                <div className="min-w-0">
-                  <h3 className="font-sans text-sm font-bold text-foreground">
+                <div className="min-w-0 flex-1">
+                  <h3 className="font-sans text-[15px] font-bold tracking-tight text-foreground truncate">
                     {exam.topic}
                   </h3>
-                  <p className="mt-0.5 font-sans text-xs tabular-nums text-mutedfg">
+                  <p className="mt-0.5 font-sans text-xs font-medium text-mutedfg">
                     {mediumDate(exam.date)}
                   </p>
                 </div>
-                <span className="font-display text-xl font-extrabold tabular-nums text-foreground">
+                <span className="font-display text-2xl font-bold tracking-tight tabular-nums text-foreground shrink-0">
                   {exam.score}
                 </span>
               </div>
+
+              {/* Status Pill Badge */}
               <div className="mt-2.5">
                 <StatusPill tone={pill.tone} label={pill.label} />
               </div>
-              <p className="mt-2.5 font-sans text-xs italic text-foreground/85">
-                «{exam.comment}»
-              </p>
-              <div className="mt-3 flex items-center justify-between border-t border-hairline pt-2.5">
+
+              {/* Teacher Comment */}
+              {exam.comment && (
+                <p className="mt-2.5 font-sans text-xs leading-relaxed italic text-slate-600 dark:text-slate-300">
+                  «{exam.comment}»
+                </p>
+              )}
+
+              {/* Bottom Action & Grader Row */}
+              <div className="mt-3.5 flex items-center justify-between border-t border-slate-100 dark:border-slate-800/80 pt-3">
                 {exam.hasScan ? (
                   <button
                     type="button"
                     onClick={() =>
                       openFullScreen(<ScanViewer exam={exam} onClose={closeFullScreen} />)
                     }
-                    className="flex min-h-[36px] items-center gap-1.5 font-sans text-xs font-semibold text-blue-600 transition-colors hover:text-blue-700 dark:text-blue-400"
+                    className="flex items-center gap-1.5 font-sans text-xs font-semibold text-blue-600 transition-colors hover:text-blue-700 active:opacity-75 dark:text-blue-400"
                   >
                     <FileTextIcon size={14} />
                     {t.examViewScan}
                   </button>
                 ) : (
-                  <span className="flex min-h-[36px] items-center gap-1.5 font-sans text-xs text-mutedfg">
+                  <span className="flex items-center gap-1.5 font-sans text-xs text-mutedfg">
                     <FileTextIcon size={14} />
                     {t.examNoScan}
                   </span>
                 )}
-                <span className="font-sans text-xs text-mutedfg">{exam.gradedBy}</span>
+                <span className="font-sans text-xs font-medium text-mutedfg">{exam.gradedBy}</span>
               </div>
             </div>
           );

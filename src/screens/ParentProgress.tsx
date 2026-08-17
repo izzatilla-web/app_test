@@ -39,12 +39,10 @@ export function ParentProgress({ scrollSignal }: { scrollSignal: number }) {
       ) : dataState === 'error' ? (
         <ErrorState onRetry={() => undefined} />
       ) : (
-        <div className="space-y-6">
+        <div className="space-y-5 pb-16">
           {!empty && <AcademicPassportView child={child} isParent={true} />}
-          <div className="space-y-6 px-4 pb-12">
-            <ExamsSection exams={empty ? [] : child.exams} />
-            {!empty && <SupportSection sessions={child.supportSessions} />}
-          </div>
+          <ExamsSection exams={empty ? [] : child.exams} />
+          {!empty && <SupportSection sessions={child.supportSessions} />}
         </div>
       )}
     </ScrollScreen>

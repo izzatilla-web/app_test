@@ -26,11 +26,9 @@ export function StudentProgress({ scrollSignal }: { scrollSignal: number }) {
       ) : dataState === 'error' ? (
         <ErrorState onRetry={() => undefined} />
       ) : (
-        <div className="space-y-6">
+        <div className="space-y-5 pb-16">
           {!empty && <AcademicPassportView child={student} isParent={false} />}
-          <div className="px-4 pb-12">
-            <ExamsSection exams={empty ? [] : student.exams} />
-          </div>
+          <ExamsSection exams={empty ? [] : student.exams} />
         </div>
       )}
     </ScrollScreen>

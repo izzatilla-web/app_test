@@ -106,7 +106,7 @@ export function AcademicPassportView({ child, isParent = false }: AcademicPasspo
   const strokeDashoffset = circumference * (1 - simData.attendanceRate / 100);
 
   return (
-    <div className="space-y-5 px-4 pb-20 pt-1">
+    <div className="space-y-5 px-4 pb-1 pt-1">
       {/* ── 1. SIGNATURE BLUE HERO PROGRESS CARD (WITH NEON GLOW PROGRESS) ── */}
       <div
         className="relative min-h-[160px] overflow-hidden rounded-3xl p-5 text-white backdrop-blur-xl border border-white/40 shadow-[0_8px_32px_0_rgba(31,38,135,0.18),inset_0_1px_1px_0_rgba(255,255,255,0.4)] dark:border-white/20"
