@@ -19,6 +19,7 @@ import { Button } from '../components/Button';
 import { ScreenSkeleton } from '../components/Skeleton';
 import { ErrorState } from '../components/ErrorState';
 import { EmptyState } from '../components/EmptyState';
+import { GoalProgressDashboardCard } from '../components/GoalProgressDashboardCard';
 import { Notifications } from './Notifications';
 import { NewBookingSheet } from './NewBookingSheet';
 import { Ranking } from './Ranking';
@@ -105,89 +106,101 @@ export function StudentToday({ scrollSignal }: {scrollSignal: number;}) {
       dataState === 'error' ?
       <ErrorState onRetry={() => undefined} /> :
 
-      <div className="space-y-8">
+      <div className="space-y-4">
+        <section className="px-4">
+          <Card>
+            {lesson.has && !empty ? (
+              <>
+                <p className="font-sans text-caption font-medium uppercase tracking-[0.4px] text-mutedfg">
+                  {t.todayLessonCaption}
+                </p>
+                <p className="mt-1 font-display text-title1 font-bold tabular-nums text-foreground">
+                  {lesson.time}
+                </p>
+                <p className="mt-1 font-sans text-subhead text-mutedfg">
+                  {lesson.group} · {lesson.teacher}
+                </p>
+                {presence && (
+                  <div className="mt-3">
+                    <StatusPill tone={presence.tone} label={presence.label} />
+                  </div>
+                )}
+              </>
+            ) : (
+              <EmptyState
+                icon={CalendarOffIcon}
+                title={t.todayNoLesson}
+                body={t.todayNextLesson}
+                compact
+              />
+            )}
+          </Card>
+        </section>
+
+        {/* ── Prominent Academic Goal & Lesson Count Progress Widget ── */}
+        {!empty && (
+          <section className="px-4">
+            <GoalProgressDashboardCard />
+          </section>
+        )}
+
+        {!empty && student.weakPoints.length > 0 ? (
+          <section className="space-y-3 px-4">
+            {student.weakPoints.map((wp) => (
+              <AlertCard
+                key={wp.id}
+                tone="amber"
+                icon={FlagIcon}
+                title={wp.topic}
+                body={t.weakPointBody}
+                action={
+                  <Button
+                    variant="secondary"
+                    full
+                    onClick={() => {
+                      ui.goToTab(4);
+                      ui.openSheet({
+                        key: 'new-booking',
+                        detent: 'large',
+                        node: (
+                          <NewBookingSheet
+                            initialPurpose={`${wp.topic} — ${wp.note.toLowerCase()}`}
+                          />
+                        )
+                      });
+                    }}
+                  >
+                    {t.weakPointCta}
+                  </Button>
+                }
+              />
+            ))}
+          </section>
+        ) : (
           <section className="px-4">
             <Card>
-              {lesson.has && !empty ?
-            <>
-                  <p className="font-sans text-caption font-medium uppercase tracking-[0.4px] text-mutedfg">
-                    {t.todayLessonCaption}
+              <div className="flex items-start gap-3">
+                <CheckCircle2Icon size={22} className="mt-[1px] shrink-0 text-good" />
+                <div>
+                  <h3 className="font-sans text-headline font-semibold text-foreground">
+                    {t.todayAllClear}
+                  </h3>
+                  <p className="mt-[2px] font-sans text-subhead text-mutedfg">
+                    {t.todayAllClearBody}
                   </p>
-                  <p className="mt-1 font-display text-title1 font-bold tabular-nums text-foreground">
-                    {lesson.time}
-                  </p>
-                  <p className="mt-1 font-sans text-subhead text-mutedfg">
-                    {lesson.group} · {lesson.teacher}
-                  </p>
-                  {presence &&
-              <div className="mt-3">
-                      <StatusPill tone={presence.tone} label={presence.label} />
-                    </div>
-              }
-                </> :
-
-            <EmptyState
-              icon={CalendarOffIcon}
-              title={t.todayNoLesson}
-              body={t.todayNextLesson}
-              compact />
-
-            }
+                </div>
+              </div>
             </Card>
           </section>
+        )}
 
-          {!empty && student.weakPoints.length > 0 ?
-        <section className="space-y-3 px-4">
-              {student.weakPoints.map((wp) =>
-          <AlertCard
-            key={wp.id}
-            tone="amber"
-            icon={FlagIcon}
-            title={wp.topic}
-            body={t.weakPointBody}
-            action={
-            <Button
-              variant="secondary"
-              full
-              onClick={() => {
-                ui.goToTab(4);
-                ui.openSheet({
-                  key: 'new-booking',
-                  detent: 'large',
-                  node: <NewBookingSheet initialPurpose={`${wp.topic} — ${wp.note.toLowerCase()}`} />
-                });
-              }}>
-              
-                      {t.weakPointCta}
-                    </Button>
-            } />
-
-          )}
-            </section> :
-
-        <section className="px-4">
-              <Card>
-                <div className="flex items-start gap-3">
-                  <CheckCircle2Icon size={22} className="mt-[1px] shrink-0 text-good" />
-                  <div>
-                    <h3 className="font-sans text-headline font-semibold text-foreground">
-                      {t.todayAllClear}
-                    </h3>
-                    <p className="mt-[2px] font-sans text-subhead text-mutedfg">
-                      {t.todayAllClearBody}
-                    </p>
-                  </div>
-                </div>
-              </Card>
-            </section>
-        }
-
-          <StatTrio
+        <StatTrio
           items={[
-          { value: `${student.attendanceRate}%`, label: t.statAttendance },
-          { value: `${student.homeworkRate}%`, label: t.statHomework },
-          { value: `${student.topicsDone}/${student.topicsTotal}`, label: t.statTopics }]
-          } />
+            { value: `${student.attendanceRate}%`, label: t.statAttendance },
+            { value: `${student.homeworkRate}%`, label: t.statHomework },
+            { value: `${student.topicsDone}/${student.topicsTotal}`, label: t.statTopics }
+          ]}
+        />
         
 
           {nextBooking && !empty &&

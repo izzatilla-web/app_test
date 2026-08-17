@@ -1,11 +1,13 @@
-import { useMemo, useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import {
   ChevronDownIcon,
   MinusIcon,
-  TrendingDownIcon,
-  TrendingUpIcon,
-  TrophyIcon } from
-'lucide-react';
+  TrophyIcon,
+  SparklesIcon,
+  CrownIcon,
+  ArrowUpIcon,
+  ArrowDownIcon
+} from 'lucide-react';
 import { PushScreen } from '../components/ScrollScreen';
 import { Card } from '../components/Card';
 import { Avatar } from '../components/Avatar';
@@ -13,389 +15,557 @@ import { SegmentedControl } from '../components/SegmentedControl';
 import { EmptyState } from '../components/EmptyState';
 import { t } from '../strings';
 import { haptic } from '../tokens';
-import { SCORE_WEIGHTS, weakestModules } from '../academics';
-import { curriculumFor } from '../curriculum';
-import {
-  buildRanking,
-  byImprovement,
-  myRow,
-  RANKING_MIN_EXAMS,
-  rowAhead } from
-'../ranking';
+import { SCORE_WEIGHTS } from '../academics';
+import { buildRanking, myRow, RANKING_MIN_EXAMS } from '../ranking';
 import type { RankingScope, RankRow } from '../ranking';
 import type { ChildRecord } from '../mockData';
 import { useUI } from '../ui';
 
 /**
- * Academic ranking. Purely educational — students are ordered by the composite
- * academic score (mastery, exams, homework, curriculum, attendance), never by a
- * single metric and never by anything from the Games system.
+ * Academic Level Leaderboard — Pixel-perfect 1:1 3D Podium inspired by reference,
+ * customized specifically for academic performance and level hierarchies.
  */
-export function Ranking({ child, backTitle }: {child: ChildRecord;backTitle: string;}) {
+export function Ranking({ child, backTitle }: { child: ChildRecord; backTitle: string }) {
   const ui = useUI();
-  const [scopeIndex, setScopeIndex] = useState(0);
-  const [modeIndex, setModeIndex] = useState(0);
-  const [formulaOpen, setFormulaOpen] = useState(false);
+  // 0 = "Mening levelim", 1 = "Barcha levellar"
+  const [scopeIndex, setScopeIndex] = useState<number>(0);
+  const [formulaOpen, setFormulaOpen] = useState<boolean>(false);
 
   const scope: RankingScope = scopeIndex === 0 ? 'level' : 'all';
   const performance = useMemo(() => buildRanking(child, scope), [child, scope]);
-  const rows = modeIndex === 0 ? performance : byImprovement(performance);
-  // The improvement list only holds students with score history, so the
-  // student may be absent from it — their performance row always exists.
-  const mine = myRow(rows);
-  const myPerformance = myRow(performance);
+  const mine = useMemo(() => myRow(performance), [performance]);
 
-  // A ranking built on one exam would be noise, so say so instead.
   if (child.exams.length < RANKING_MIN_EXAMS) {
     return (
       <PushScreen title={t.rankingTitle} backTitle={backTitle} onBack={ui.pop}>
         <EmptyState icon={TrophyIcon} title={t.rankEmptyTitle} body={t.rankEmptyBody} />
-      </PushScreen>);
-
+      </PushScreen>
+    );
   }
 
-  const podium = modeIndex === 0 ? performance.slice(0, 3) : [];
-  const listRows = modeIndex === 0 ? rows.slice(3) : rows;
+  const top3 = performance.slice(0, 3);
+  const remainingRows = performance.slice(3);
+
+  // Student directly ahead of current user for motivation
+  const myIndex = performance.findIndex((r) => r.you);
+  const aheadStudent = myIndex > 0 ? performance[myIndex - 1] : undefined;
+  const pointsBehind = aheadStudent && mine ? (aheadStudent.score - mine.score).toFixed(1) : null;
 
   return (
     <PushScreen title={t.rankingTitle} backTitle={backTitle} onBack={ui.pop}>
-      <div className="space-y-8 pb-4">
-        <div className="space-y-3 px-4 pt-1">
-          <p className="font-sans text-subhead text-mutedfg">{t.rankingSubtitle}</p>
+      <div className="space-y-6 px-4 pb-24 pt-1">
+        {/* ── 1. Segmented Control Tabs ── */}
+        <div className="space-y-3">
           <SegmentedControl
-            options={[t.rankScopeLevel, t.rankScopeAll]}
+            options={[t.rankTabMyLevel, t.rankTabAllLevels]}
             value={scopeIndex}
-            onChange={setScopeIndex} />
+            onChange={(idx) => {
+              haptic('light');
+              setScopeIndex(idx);
+            }}
+          />
 
-          <SegmentedControl
-            options={[t.rankModePerformance, t.rankModeImprovement]}
-            value={modeIndex}
-            onChange={setModeIndex} />
-
+          {/* Contextual Academic Level Banner */}
+          <div className="flex items-center justify-between px-1">
+            <div className="flex items-center gap-1.5">
+              <span className="font-sans text-xs font-bold text-foreground">
+                {scopeIndex === 0 ? t.rankContextMyLevel(child.level) : t.rankContextAllLevels}
+              </span>
+            </div>
+            <span className="rounded-full bg-slate-100 px-2 py-0.5 font-sans text-[11px] font-semibold text-mutedfg dark:bg-slate-800">
+              {performance.length} ta o'quvchi
+            </span>
+          </div>
         </div>
 
-        {podium.length === 3 && <Podium rows={podium} />}
+        {/* ── 2. Pixel-Perfect 3D Connected Podium (#2, #1, #3) ── */}
+        {top3.length === 3 && (
+          <Connected3DPodium rows={top3} />
+        )}
 
-        {mine ?
-        <MyPosition row={mine} improvement={modeIndex === 1} /> :
+        {/* ── 3. Highlighted Current User Card ("Sizning o‘rningiz") ── */}
+        {mine && (
+          <section className="space-y-2 pt-1">
+            <div className="flex items-center justify-between px-1">
+              <h3 className="font-sans text-xs font-bold uppercase tracking-wider text-mutedfg">
+                {t.rankYourPosition}
+              </h3>
+            </div>
+            <div className="rounded-2xl border border-blue-500/30 bg-gradient-to-br from-blue-50/70 via-white to-indigo-50/40 p-4 sm:p-5 shadow-sm dark:border-blue-500/30 dark:from-blue-950/30 dark:via-slate-900 dark:to-slate-900">
+              {/* Main Student Row */}
+              <div className="flex items-center justify-between gap-3">
+                <div className="flex items-center gap-3 min-w-0">
+                  <span className="font-display text-2xl font-black tabular-nums text-blue-600 dark:text-blue-400 shrink-0">
+                    #{mine.rank}
+                  </span>
+                  <div className="rounded-full ring-2 ring-blue-500/30 p-0.5 bg-white dark:bg-slate-900 shrink-0">
+                    <Avatar name={mine.name} seed={mine.seed} size={40} />
+                  </div>
+                  <div className="min-w-0">
+                    <p className="truncate font-sans text-sm font-bold text-foreground">
+                      {mine.name}
+                    </p>
+                    <p className="font-sans text-xs text-mutedfg">
+                      {mine.level} daraja
+                    </p>
+                  </div>
+                </div>
 
-        <section className="px-4">
-            <h2 className="mb-2 px-1 font-sans text-section font-semibold uppercase text-mutedfg">
-              {t.rankYourPosition}
-            </h2>
-            <Card>
-              <p className="font-sans text-subhead text-mutedfg">{t.rankNoHistory}</p>
-            </Card>
+                <div className="shrink-0 text-right">
+                  <p className="font-display text-2xl font-bold tabular-nums text-foreground">
+                    {mine.score.toFixed(1)}
+                  </p>
+                  <p className="font-sans text-[10px] font-medium text-mutedfg">
+                    {t.rankScore}
+                  </p>
+                </div>
+              </div>
+
+              {/* Bottom Rank Movement & Points Gap — Seamless Apple layout */}
+              <div className="mt-3.5 flex items-center justify-between gap-2 border-t border-blue-100/70 pt-3 dark:border-blue-900/40">
+                <MovementPill movement={mine.movement} />
+
+                {aheadStudent && pointsBehind && (
+                  <span className="font-sans text-[11px] font-medium text-slate-600 dark:text-slate-300">
+                    #{aheadStudent.rank} {aheadStudent.name.split(' ')[0]}dan <strong className="text-primary font-semibold">{pointsBehind} ball</strong> orqadasiz
+                  </span>
+                )}
+              </div>
+            </div>
           </section>
-        }
+        )}
 
-        {myPerformance &&
-        <section className="px-4">
+        {/* ── 4. Ranking List Below Podium (#4 and onward) ── */}
+        {remainingRows.length > 0 && (
+          <section className="space-y-2 pt-1">
+            <div className="flex items-center justify-between px-1">
+              <h3 className="font-sans text-xs font-bold uppercase tracking-wider text-mutedfg">
+                {t.rankTopStudents}
+              </h3>
+              <span className="font-sans text-xs text-mutedfg">
+                {t.rankScore}
+              </span>
+            </div>
+
+            <div className="overflow-hidden rounded-2xl border border-slate-200/90 bg-white shadow-sm dark:border-slate-800/90 dark:bg-slate-900">
+              {remainingRows.map((row, i) => (
+                <RankRowItem
+                  key={row.id}
+                  row={row}
+                  last={i === remainingRows.length - 1}
+                />
+              ))}
+            </div>
+          </section>
+        )}
+
+        {/* ── 5. Academic Score Formula Accordion ── */}
+        {mine && (
+          <section className="pt-1">
             <Card padded={false}>
               <button
-              type="button"
-              onClick={() => {
-                haptic('light');
-                setFormulaOpen((open) => !open);
-              }}
-              className="flex w-full items-center justify-between gap-3 p-4 text-left transition-opacity duration-100 ease-out active:opacity-70">
-
-                <span className="font-sans text-headline font-semibold text-foreground">
+                type="button"
+                onClick={() => {
+                  haptic('light');
+                  setFormulaOpen((open) => !open);
+                }}
+                className="flex w-full items-center justify-between gap-3 p-4 text-left transition-opacity duration-100 ease-out active:opacity-70"
+              >
+                <span className="font-sans text-sm font-semibold text-foreground">
                   {t.rankHowCalculated}
                 </span>
                 <ChevronDownIcon
-                size={18}
-                className="shrink-0 text-mutedfg transition-transform duration-250 ease-out"
-                style={{ transform: formulaOpen ? 'rotate(180deg)' : 'none' }} />
-
+                  size={18}
+                  className="shrink-0 text-mutedfg transition-transform duration-200 ease-out"
+                  style={{ transform: formulaOpen ? 'rotate(180deg)' : 'none' }}
+                />
               </button>
-              {formulaOpen &&
-            <div className="slide-up-fade border-t border-hairline p-4">
-                  <p className="font-sans text-subhead text-mutedfg">{t.rankFormulaIntro}</p>
-                  <div className="mt-3 space-y-3">
-                    <ComponentBar
-                  label={t.rankComponentMastery}
-                  value={myPerformance.components.mastery}
-                  weight={SCORE_WEIGHTS.mastery} />
 
-                    <ComponentBar
-                  label={t.rankComponentExams}
-                  value={myPerformance.components.exams}
-                  weight={SCORE_WEIGHTS.exams} />
-
-                    <ComponentBar
-                  label={t.rankComponentHomework}
-                  value={myPerformance.components.homework}
-                  weight={SCORE_WEIGHTS.homework} />
-
-                    <ComponentBar
-                  label={t.rankComponentCurriculum}
-                  value={myPerformance.components.curriculum}
-                  weight={SCORE_WEIGHTS.curriculum} />
-
-                    <ComponentBar
-                  label={t.rankComponentConsistency}
-                  value={myPerformance.components.consistency}
-                  weight={SCORE_WEIGHTS.consistency} />
-
+              {formulaOpen && (
+                <div className="border-t border-hairline p-4 slide-up-fade">
+                  <p className="font-sans text-xs text-mutedfg">{t.rankFormulaIntro}</p>
+                  <div className="mt-3.5 space-y-3">
+                    <ScoreComponentBar
+                      label={t.rankComponentMastery}
+                      value={mine.components.mastery}
+                      weight={SCORE_WEIGHTS.mastery}
+                    />
+                    <ScoreComponentBar
+                      label={t.rankComponentExams}
+                      value={mine.components.exams}
+                      weight={SCORE_WEIGHTS.exams}
+                    />
+                    <ScoreComponentBar
+                      label={t.rankComponentHomework}
+                      value={mine.components.homework}
+                      weight={SCORE_WEIGHTS.homework}
+                    />
+                    <ScoreComponentBar
+                      label={t.rankComponentCurriculum}
+                      value={mine.components.curriculum}
+                      weight={SCORE_WEIGHTS.curriculum}
+                    />
+                    <ScoreComponentBar
+                      label={t.rankComponentConsistency}
+                      value={mine.components.consistency}
+                      weight={SCORE_WEIGHTS.consistency}
+                    />
                   </div>
+
                   <div className="mt-4 flex items-baseline justify-between border-t border-hairline pt-3">
-                    <span className="font-sans text-subhead text-mutedfg">{t.rankScore}</span>
-                    <span className="font-display text-title2 font-bold tabular-nums text-foreground">
-                      {myPerformance.score.toFixed(1)}
+                    <span className="font-sans text-xs font-medium text-mutedfg">{t.rankScore}</span>
+                    <span className="font-display text-xl font-bold tabular-nums text-primary">
+                      {mine.score.toFixed(1)} {t.rankPointsUnit}
                     </span>
                   </div>
                 </div>
-            }
+              )}
             </Card>
           </section>
-        }
-
-        <section className="px-4">
-          <h2 className="mb-2 px-1 font-sans text-section font-semibold uppercase text-mutedfg">
-            {t.rankTopStudents}
-          </h2>
-          <Card padded={false}>
-            {listRows.map((row, i) =>
-            <RankRowView key={row.id} row={row} last={i === listRows.length - 1} improvement={modeIndex === 1} />
-            )}
-          </Card>
-        </section>
-
-        {modeIndex === 0 && myPerformance &&
-        <HowToImprove rows={performance} mine={myPerformance} child={child} />
-        }
+        )}
       </div>
-    </PushScreen>);
-
+    </PushScreen>
+  );
 }
 
-/* ── Top three ─────────────────────────────────────────── */
+/* ── 1:1 Monolithic 3D Podium Geometry with Isometric Depth ──── */
 
-function Podium({ rows }: {rows: RankRow[];}) {
-  // Visual order puts the leader in the middle: #2, #1, #3.
-  const order = [rows[1], rows[0], rows[2]];
+function Connected3DPodium({ rows }: { rows: RankRow[] }) {
+  // Ordered: [ #2 Silver (Left), #1 Gold (Center), #3 Bronze (Right) ]
+  const silver = rows[1];
+  const gold = rows[0];
+  const bronze = rows[2];
+
   return (
-    <section className="px-4">
-      <div className="flex items-end justify-center gap-3">
-        {order.map((row, i) => {
-          const first = i === 1;
-          return (
-            <div
-              key={row.id}
-              className="slide-up-fade flex min-w-0 flex-1 flex-col items-center"
-              style={{ animationDelay: `${i * 70}ms` }}>
-
-              <div className="relative">
-                <span
-                  className="block rounded-full"
-                  style={{
-                    padding: first ? 3 : 2,
-                    background: first ?
-                    'linear-gradient(140deg, hsl(var(--primary)), hsl(var(--accent)))' :
-                    'hsl(var(--card-border))',
-                    boxShadow: first ? '0 0 16px hsl(var(--primary) / 0.35)' : undefined
-                  }}>
-
-                  <span className="block rounded-full border-2 border-card">
-                    <Avatar name={row.name} seed={row.seed} size={first ? 64 : 40} />
-                  </span>
-                </span>
-                <span
-                  className="absolute -bottom-[2px] left-1/2 flex h-[22px] min-w-[22px] -translate-x-1/2 items-center justify-center rounded-full border-2 border-card px-[5px] font-sans text-caption font-bold tabular-nums"
-                  style={{
-                    backgroundColor: first ? 'hsl(var(--primary))' : 'hsl(var(--secondary))',
-                    color: first ? 'hsl(var(--primary-fg))' : 'hsl(var(--muted-fg))'
-                  }}>
-
-                  {row.rank}
-                </span>
+    <div className="relative pt-1 pb-1">
+      {/* ── Top Floating Student Profiles ── */}
+      <div className="grid grid-cols-3 gap-2 px-1 z-10 relative">
+        {/* #2 Silver (Left) */}
+        <div className="flex flex-col items-center justify-end pb-3">
+          <div className="relative mb-1.5">
+            <div className="rounded-full bg-gradient-to-tr from-slate-300 to-slate-400 p-0.5 shadow-sm">
+              <div className="rounded-full bg-white p-0.5 dark:bg-slate-900">
+                <Avatar name={silver.name} seed={silver.seed} size={40} />
               </div>
-              <p className="mt-3 w-full truncate text-center font-sans text-footnote font-semibold text-foreground">
-                {row.name.split(' ')[0]}
-              </p>
-              <p className="w-full truncate text-center font-sans text-caption tabular-nums text-mutedfg">
-                {row.score.toFixed(1)}
-              </p>
-            </div>);
+            </div>
+            {/* Medal Badge */}
+            <span className="absolute -bottom-1.5 left-1/2 -translate-x-1/2 flex h-[19px] w-[19px] items-center justify-center rounded-full bg-gradient-to-tr from-slate-200 to-slate-300 text-slate-800 text-[11px] font-display font-bold shadow-xs ring-2 ring-white dark:ring-slate-900">
+              2
+            </span>
+          </div>
 
-        })}
-      </div>
-    </section>);
-
-}
-
-/* ── The student's own standing ────────────────────────── */
-
-function MyPosition({ row, improvement }: {row: RankRow;improvement: boolean;}) {
-  return (
-    <section className="px-4">
-      <h2 className="mb-2 px-1 font-sans text-section font-semibold uppercase text-mutedfg">
-        {t.rankYourPosition}
-      </h2>
-      <Card>
-        <div className="flex items-center gap-3">
-          <span className="font-display text-title1 font-bold tabular-nums text-primary">
-            #{row.rank}
+          <p className="max-w-[84px] truncate text-center font-sans text-xs font-bold text-foreground">
+            {silver.name.split(' ')[0]}
+          </p>
+          <span className="font-sans text-[10px] text-mutedfg leading-tight">
+            {silver.level} daraja
           </span>
-          <Avatar name={row.name} seed={row.seed} size={40} />
-          <div className="min-w-0 flex-1">
-            <p className="truncate font-sans text-headline font-semibold text-foreground">
-              {row.name}
-            </p>
-            <p className="font-sans text-footnote text-mutedfg">{t.rankLevel(row.level)}</p>
+          <div className="mt-1 inline-flex items-center gap-0.5 rounded-full bg-slate-100 px-2 py-0.5 font-sans text-[11px] font-bold text-slate-700 dark:bg-slate-800 dark:text-slate-300 tabular-nums shadow-xs">
+            <span>{silver.score.toFixed(1)}</span>
           </div>
-          <div className="shrink-0 text-right">
-            <p className="font-display text-title3 font-bold tabular-nums text-foreground">
-              {improvement && row.delta !== null ? formatDelta(row.delta) : row.score.toFixed(1)}
-            </p>
-            <p className="font-sans text-caption text-mutedfg">{t.rankScore}</p>
+          <div className="mt-1">
+            <MovementPill movement={silver.movement} mini />
           </div>
         </div>
-        <div className="mt-3 border-t border-hairline pt-3">
-          <Movement movement={row.movement} />
+
+        {/* #1 Gold Leader (Center) */}
+        <div className="flex flex-col items-center justify-end pb-3">
+          {/* Crown */}
+          <div className="mb-0.5 text-amber-500 animate-bounce">
+            <CrownIcon size={18} className="fill-current" />
+          </div>
+
+          <div className="relative mb-1.5">
+            <div className="rounded-full bg-gradient-to-tr from-amber-400 via-yellow-300 to-amber-500 p-0.5 shadow-md shadow-amber-500/25 ring-2 ring-amber-400/50">
+              <div className="rounded-full bg-white p-0.5 dark:bg-slate-900">
+                <Avatar name={gold.name} seed={gold.seed} size={64} />
+              </div>
+            </div>
+            {/* Gold Badge */}
+            <span className="absolute -bottom-1.5 left-1/2 -translate-x-1/2 flex h-[22px] w-[22px] items-center justify-center rounded-full bg-gradient-to-tr from-amber-400 to-yellow-300 text-amber-950 text-xs font-display font-black shadow-sm ring-2 ring-white dark:ring-slate-900">
+              1
+            </span>
+          </div>
+
+          <p className="max-w-[96px] truncate text-center font-sans text-xs font-bold text-foreground">
+            {gold.name.split(' ')[0]}
+          </p>
+          <span className="font-sans text-[10px] text-mutedfg leading-tight">
+            {gold.level} daraja
+          </span>
+          <div className="mt-1 inline-flex items-center gap-0.5 rounded-full bg-amber-50 px-2 py-0.5 font-sans text-[11px] font-bold text-amber-700 dark:bg-amber-950/60 dark:text-amber-300 ring-1 ring-amber-400/30 tabular-nums shadow-xs">
+            <span>{gold.score.toFixed(1)}</span>
+          </div>
+          <div className="mt-1">
+            <MovementPill movement={gold.movement} mini />
+          </div>
         </div>
-      </Card>
-    </section>);
 
+        {/* #3 Bronze (Right) */}
+        <div className="flex flex-col items-center justify-end pb-3">
+          <div className="relative mb-1.5">
+            <div className="rounded-full bg-gradient-to-tr from-orange-300 to-amber-600 p-0.5 shadow-sm">
+              <div className="rounded-full bg-white p-0.5 dark:bg-slate-900">
+                <Avatar name={bronze.name} seed={bronze.seed} size={40} />
+              </div>
+            </div>
+            {/* Bronze Badge */}
+            <span className="absolute -bottom-1.5 left-1/2 -translate-x-1/2 flex h-[19px] w-[19px] items-center justify-center rounded-full bg-gradient-to-tr from-amber-600 to-orange-400 text-white text-[11px] font-display font-bold shadow-xs ring-2 ring-white dark:ring-slate-900">
+              3
+            </span>
+          </div>
+
+          <p className="max-w-[84px] truncate text-center font-sans text-xs font-bold text-foreground">
+            {bronze.name.split(' ')[0]}
+          </p>
+          <span className="font-sans text-[10px] text-mutedfg leading-tight">
+            {bronze.level} daraja
+          </span>
+          <div className="mt-1 inline-flex items-center gap-0.5 rounded-full bg-orange-50 px-2 py-0.5 font-sans text-[11px] font-bold text-orange-800 dark:bg-orange-950/50 dark:text-orange-300 tabular-nums shadow-xs">
+            <span>{bronze.score.toFixed(1)}</span>
+          </div>
+          <div className="mt-1">
+            <MovementPill movement={bronze.movement} mini />
+          </div>
+        </div>
+      </div>
+
+      {/* ── Continuous Monolithic 3D Podium Geometry (1:1 with Reference) ── */}
+      <div className="relative w-full h-[126px] mt-1">
+        {/* Soft floor shadow */}
+        <div className="absolute bottom-0 inset-x-2 h-4 bg-black/15 dark:bg-black/40 blur-lg rounded-full pointer-events-none" />
+
+        <svg
+          viewBox="0 0 340 120"
+          preserveAspectRatio="none"
+          className="w-full h-full overflow-visible drop-shadow-md"
+        >
+          <defs>
+            {/* Linear Gradients for 3D Faces */}
+            {/* Step 2 (Left Silver) */}
+            <linearGradient id="podium-top-2" x1="0%" y1="0%" x2="100%" y2="100%">
+              <stop offset="0%" stopColor="#94A3B8" />
+              <stop offset="100%" stopColor="#CBD5E1" />
+            </linearGradient>
+            <linearGradient id="podium-front-2" x1="0%" y1="0%" x2="0%" y2="100%">
+              <stop offset="0%" stopColor="#475569" />
+              <stop offset="100%" stopColor="#334155" />
+            </linearGradient>
+
+            {/* Step 1 (Center Gold / Primary Leader) */}
+            <linearGradient id="podium-top-1" x1="0%" y1="0%" x2="100%" y2="100%">
+              <stop offset="0%" stopColor="#60A5FA" />
+              <stop offset="100%" stopColor="#93C5FD" />
+            </linearGradient>
+            <linearGradient id="podium-front-1" x1="0%" y1="0%" x2="0%" y2="100%">
+              <stop offset="0%" stopColor="#2563EB" />
+              <stop offset="50%" stopColor="#1D4ED8" />
+              <stop offset="100%" stopColor="#1E3A8A" />
+            </linearGradient>
+            <linearGradient id="podium-side-1-left" x1="0%" y1="0%" x2="100%" y2="0%">
+              <stop offset="0%" stopColor="#1E3A8A" />
+              <stop offset="100%" stopColor="#1D4ED8" />
+            </linearGradient>
+            <linearGradient id="podium-side-1-right" x1="100%" y1="0%" x2="0%" y2="0%">
+              <stop offset="0%" stopColor="#172554" />
+              <stop offset="100%" stopColor="#1E3A8A" />
+            </linearGradient>
+
+            {/* Step 3 (Right Bronze) */}
+            <linearGradient id="podium-top-3" x1="0%" y1="0%" x2="100%" y2="100%">
+              <stop offset="0%" stopColor="#64748B" />
+              <stop offset="100%" stopColor="#94A3B8" />
+            </linearGradient>
+            <linearGradient id="podium-front-3" x1="0%" y1="0%" x2="0%" y2="100%">
+              <stop offset="0%" stopColor="#334155" />
+              <stop offset="100%" stopColor="#1E293B" />
+            </linearGradient>
+          </defs>
+
+          {/* ── #2 Left Pillar ── */}
+          {/* Top 3D Face */}
+          <polygon points="10,48 114,48 120,38 18,38" fill="url(#podium-top-2)" />
+          {/* Front Face */}
+          <rect x="10" y="48" width="104" height="72" rx="1" fill="url(#podium-front-2)" />
+          {/* Numeral 2 */}
+          <text
+            x="62"
+            y="94"
+            textAnchor="middle"
+            fontFamily="system-ui, sans-serif"
+            fontWeight="900"
+            fontSize="46"
+            fill="white"
+            fillOpacity="0.18"
+          >
+            2
+          </text>
+
+          {/* ── #3 Right Pillar ── */}
+          {/* Top 3D Face */}
+          <polygon points="226,62 330,62 322,52 220,52" fill="url(#podium-top-3)" />
+          {/* Front Face */}
+          <rect x="226" y="62" width="104" height="58" rx="1" fill="url(#podium-front-3)" />
+          {/* Numeral 3 */}
+          <text
+            x="278"
+            y="104"
+            textAnchor="middle"
+            fontFamily="system-ui, sans-serif"
+            fontWeight="900"
+            fontSize="44"
+            fill="white"
+            fillOpacity="0.18"
+          >
+            3
+          </text>
+
+          {/* ── #1 Center Pillar (Taller & In Front) ── */}
+          {/* Left Exposed 3D Depth Facet */}
+          <polygon points="114,14 120,6 120,38 114,48" fill="url(#podium-side-1-left)" />
+          {/* Right Exposed 3D Depth Facet */}
+          <polygon points="226,14 232,6 232,52 226,62" fill="url(#podium-side-1-right)" />
+          {/* Top 3D Face */}
+          <polygon points="114,14 226,14 232,6 120,6" fill="url(#podium-top-1)" />
+          {/* Front Face */}
+          <rect x="114" y="14" width="112" height="106" rx="2" fill="url(#podium-front-1)" />
+          {/* Light Sheen Reflection */}
+          <path d="M114,14 L226,14 L226,26 L114,32 Z" fill="white" fillOpacity="0.14" />
+          {/* Numeral 1 */}
+          <text
+            x="170"
+            y="78"
+            textAnchor="middle"
+            fontFamily="system-ui, sans-serif"
+            fontWeight="900"
+            fontSize="54"
+            fill="white"
+            fillOpacity="0.26"
+          >
+            1
+          </text>
+        </svg>
+      </div>
+    </div>
+  );
 }
 
-function Movement({ movement }: {movement: number | null;}) {
-  if (movement === null) {
-    return <p className="font-sans text-footnote text-mutedfg">{t.rankNoHistory}</p>;
-  }
-  if (movement === 0) {
-    return (
-      <p className="flex items-center gap-[6px] font-sans text-footnote text-mutedfg">
-        <MinusIcon size={14} />
-        {t.rankMovementNone}
-      </p>);
+/* ── Remaining List Row Item (#4 and onward) ──────────────────── */
 
-  }
-  const up = movement > 0;
-  const Icon = up ? TrendingUpIcon : TrendingDownIcon;
-  return (
-    <p
-      className="flex items-center gap-[6px] font-sans text-footnote font-medium"
-      style={{ color: up ? 'hsl(var(--good))' : 'hsl(var(--muted-fg))' }}>
-
-      <Icon size={14} />
-      {up ? t.rankMovementUp(movement) : t.rankMovementDown(Math.abs(movement))}
-    </p>);
-
-}
-
-/* ── List row ──────────────────────────────────────────── */
-
-function RankRowView({ row, last, improvement }: {row: RankRow;last: boolean;improvement: boolean;}) {
+function RankRowItem({ row, last }: { row: RankRow; last: boolean }) {
   return (
     <div
-      className="flex items-center gap-3 pl-4"
-      style={{ backgroundColor: row.you ? 'hsl(var(--primary) / 0.06)' : undefined }}>
-
-      <span className="w-[26px] shrink-0 text-right font-sans text-subhead font-semibold tabular-nums text-mutedfg">
-        {row.rank}
-      </span>
-      <Avatar name={row.name} seed={row.seed} size={32} />
-      <div
-        className={[
-        'flex min-h-[56px] flex-1 items-center gap-3 py-2 pr-4',
-        last ? '' : 'border-b border-hairline'].
-        join(' ')}>
-
-        <div className="min-w-0 flex-1">
-          <p
-            className={[
-            'truncate font-sans text-subhead text-foreground',
-            row.you ? 'font-bold' : 'font-medium'].
-            join(' ')}>
-
-            {row.name}
-          </p>
-          <p className="truncate font-sans text-caption text-mutedfg">{t.rankLevel(row.level)}</p>
-        </div>
-        <span
-          className="shrink-0 font-sans text-subhead font-semibold tabular-nums"
-          style={{
-            color:
-            improvement && row.delta !== null && row.delta > 0 ?
-            'hsl(var(--good))' :
-            'hsl(var(--foreground))'
-          }}>
-
-          {improvement && row.delta !== null ? formatDelta(row.delta) : row.score.toFixed(1)}
+      className={[
+        'flex items-center justify-between gap-3 px-4 py-3 transition-colors',
+        row.you
+          ? 'bg-blue-50/70 dark:bg-blue-950/30'
+          : 'hover:bg-slate-50/70 dark:hover:bg-slate-800/40',
+        last ? '' : 'border-b border-slate-100 dark:border-slate-800/70'
+      ].join(' ')}
+    >
+      {/* Rank, Avatar & Name */}
+      <div className="flex items-center gap-3 min-w-0">
+        <span className="w-6 shrink-0 font-sans text-xs font-bold tabular-nums text-mutedfg text-center">
+          #{row.rank}
         </span>
+        <Avatar name={row.name} seed={row.seed} size={32} />
+        <div className="min-w-0">
+          <div className="flex items-center gap-1.5">
+            <p className={`truncate font-sans text-xs sm:text-sm ${row.you ? 'font-bold text-primary' : 'font-semibold text-foreground'}`}>
+              {row.name}
+            </p>
+            {row.you && (
+              <span className="rounded-sm bg-blue-100 px-1 py-0.2 font-sans text-[9px] font-bold text-blue-700 dark:bg-blue-900 dark:text-blue-300">
+                {t.rankBadgeYou}
+              </span>
+            )}
+          </div>
+          <span className="font-sans text-[11px] text-mutedfg">
+            {row.level} daraja
+          </span>
+        </div>
       </div>
-    </div>);
 
+      {/* Movement & Score */}
+      <div className="flex items-center gap-3 shrink-0">
+        <MovementPill movement={row.movement} mini />
+
+        <div className="w-14 text-right">
+          <span className="font-display text-sm font-bold tabular-nums text-foreground">
+            {row.score.toFixed(1)}
+          </span>
+        </div>
+      </div>
+    </div>
+  );
 }
 
-/* ── Score component bar ───────────────────────────────── */
+/* ── Movement Badge (↑ 3, ↓ 1, —) ─────────────────────────────── */
 
-function ComponentBar({ label, value, weight }: {label: string;value: number;weight: number;}) {
+function MovementPill({
+  movement,
+  mini = false
+}: {
+  movement: number | null;
+  mini?: boolean;
+}) {
+  if (movement === null || movement === 0) {
+    return (
+      <span className="inline-flex items-center gap-1 font-sans text-[11px] font-medium text-mutedfg">
+        <MinusIcon size={12} />
+        {!mini && <span>{t.rankMovementNone}</span>}
+      </span>
+    );
+  }
+
+  const isUp = movement > 0;
+  return (
+    <span
+      className={[
+        'inline-flex items-center gap-0.5 rounded-full font-sans font-bold tabular-nums',
+        mini ? 'px-1.5 py-0.2 text-[10px]' : 'px-2 py-0.5 text-xs',
+        isUp
+          ? 'bg-emerald-50 text-emerald-600 dark:bg-emerald-950/40 dark:text-emerald-400'
+          : 'bg-rose-50 text-rose-600 dark:bg-rose-950/40 dark:text-rose-400'
+      ].join(' ')}
+    >
+      {isUp ? <ArrowUpIcon size={11} strokeWidth={2.5} /> : <ArrowDownIcon size={11} strokeWidth={2.5} />}
+      <span>{Math.abs(movement)}</span>
+      {!mini && <span className="ml-0.5 font-normal">o'rin</span>}
+    </span>
+  );
+}
+
+/* ── Score Component Breakdown Bar ────────────────────────────── */
+
+function ScoreComponentBar({
+  label,
+  value,
+  weight
+}: {
+  label: string;
+  value: number;
+  weight: number;
+}) {
   return (
     <div>
       <div className="flex items-baseline justify-between gap-2">
-        <span className="font-sans text-subhead text-foreground">
+        <span className="font-sans text-xs font-medium text-foreground">
           {label}
-          <span className="ml-[6px] font-sans text-caption tabular-nums text-mutedfg">
-            {Math.round(weight * 100)}%
+          <span className="ml-1.5 font-sans text-[11px] tabular-nums text-mutedfg">
+            ({Math.round(weight * 100)}%)
           </span>
         </span>
-        <span className="font-sans text-subhead font-semibold tabular-nums text-foreground">
+        <span className="font-sans text-xs font-bold tabular-nums text-foreground">
           {value}
         </span>
       </div>
-      <div className="mt-[6px] h-[5px] w-full overflow-hidden rounded-full bg-muted">
+      <div className="mt-1 h-1.5 w-full overflow-hidden rounded-full bg-slate-100 dark:bg-slate-800">
         <div
-          className="bar-fill h-full rounded-full bg-primary"
-          style={{ width: `${Math.max(0, Math.min(100, value))}%` }} />
-
+          className="bar-fill h-full rounded-full bg-primary transition-all duration-500 ease-out"
+          style={{ width: `${Math.max(0, Math.min(100, value))}%` }}
+        />
       </div>
-    </div>);
-
-}
-
-/* ── How to move up ────────────────────────────────────── */
-
-function HowToImprove({ rows, mine, child }: {rows: RankRow[];mine: RankRow;child: ChildRecord;}) {
-  const ahead = rowAhead(rows);
-  const weakest = weakestModules(curriculumFor(child.id), 1)[0];
-
-  // Advice comes from the components actually dragging the score down.
-  const tips: string[] = [];
-  if (weakest) tips.push(t.rankAdviceUnit(weakest.module.title));
-  if (child.homeworkRate < 90) tips.push(t.rankAdviceHomework);
-  if (mine.components.exams < mine.components.mastery) tips.push(t.rankAdviceExam);
-
-  if (!ahead && tips.length === 0) return null;
-
-  return (
-    <section className="px-4">
-      <h2 className="mb-2 px-1 font-sans text-section font-semibold uppercase text-mutedfg">
-        {t.rankHowToMoveUp}
-      </h2>
-      <Card>
-        {ahead &&
-        <p className="font-sans text-callout text-foreground">
-            {t.rankPointsBehind((ahead.score - mine.score).toFixed(1), ahead.rank)}
-          </p>
-        }
-        {tips.length > 0 &&
-        <ul className={['space-y-2', ahead ? 'mt-3 border-t border-hairline pt-3' : ''].join(' ')}>
-            {tips.map((tip) =>
-          <li key={tip} className="flex items-start gap-2">
-                <span className="mt-[7px] h-[5px] w-[5px] shrink-0 rounded-full bg-primary" />
-                <span className="font-sans text-subhead text-foreground/90">{tip}</span>
-              </li>
-          )}
-          </ul>
-        }
-      </Card>
-    </section>);
-
-}
-
-function formatDelta(delta: number): string {
-  return `${delta > 0 ? '+' : ''}${delta.toFixed(1)}`;
+    </div>
+  );
 }

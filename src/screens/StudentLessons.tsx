@@ -4,7 +4,6 @@ import { ScrollScreen } from '../components/ScrollScreen';
 import { SegmentedControl } from '../components/SegmentedControl';
 import { CurriculumBrowser } from '../components/CurriculumBrowser';
 import { AttendanceCalendar } from '../components/AttendanceCalendar';
-import { PracticePlan } from '../components/PracticePlan';
 import { ScreenSkeleton } from '../components/Skeleton';
 import { ErrorState } from '../components/ErrorState';
 import { EmptyState } from '../components/EmptyState';
@@ -28,11 +27,6 @@ export function StudentLessons({ scrollSignal }: {scrollSignal: number;}) {
   return (
     <ScrollScreen
       title={t.tabLessons}
-      subtitle={
-        position ?
-        `${position.level.code} · ${position.level.title}` :
-        t.lessonsSubtitle
-      }
       scrollKey="student-lessons"
       scrollToTopSignal={scrollSignal}
       offline={dataState === 'offline'}
@@ -50,18 +44,12 @@ export function StudentLessons({ scrollSignal }: {scrollSignal: number;}) {
         </NavIconButton>
       }
       belowTitle={
-        <div className="space-y-2 px-4 pb-2 pt-2">
+        <div className="px-4 pb-1 pt-2">
           <SegmentedControl
             options={[t.lsSegCurriculum, t.lsSegAttendance]}
             value={tab}
             onChange={setTab}
           />
-
-          {tab === 0 && !empty && (
-            <p className="px-1 font-sans text-footnote font-medium tabular-nums text-mutedfg">
-              {t.lsCompletedOf(progress.done, progress.total)}
-            </p>
-          )}
         </div>
       }>
 
@@ -71,16 +59,13 @@ export function StudentLessons({ scrollSignal }: {scrollSignal: number;}) {
       <ErrorState onRetry={() => undefined} /> :
       tab === 0 ?
 
-      <div className="space-y-8">
-          {empty ?
-        <EmptyState icon={LibraryIcon} title={t.lsEmptyTitle} body={t.lsEmptyBody} /> :
-
-        <>
-              <CurriculumBrowser child={student} />
-              <PracticePlan child={student} />
-            </>
-        }
-        </div> :
+      <div className="space-y-3">
+        {empty ? (
+          <EmptyState icon={LibraryIcon} title={t.lsEmptyTitle} body={t.lsEmptyBody} />
+        ) : (
+          <CurriculumBrowser child={student} />
+        )}
+      </div> :
 
 
       <AttendanceCalendar child={student} />

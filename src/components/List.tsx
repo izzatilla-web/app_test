@@ -15,8 +15,9 @@ export function ListGroup({
   children,
   className
 }: ListGroupProps) {
+  const hasCustomPadding = className && (className.includes('px-') || className.includes('p-'));
   return (
-    <section className={['px-4', className ?? ''].join(' ')}>
+    <section className={[hasCustomPadding ? '' : 'px-4', className ?? ''].join(' ')}>
       {header && (
         <h2 className="mb-2 px-1 font-sans text-section font-semibold uppercase text-mutedfg">
           {header}

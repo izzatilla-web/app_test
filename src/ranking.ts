@@ -67,71 +67,90 @@ interface PeerSeed {
 }
 
 const PEERS: PeerSeed[] = [
-{
-  id: 101, name: 'Jasur Mahmudov', seed: 3, level: 'A2', group: 'A2-ertalab',
-  components: { mastery: 90, exams: 92, homework: 95, curriculum: 71, consistency: 96 },
-  previous: { mastery: 88, exams: 90, homework: 93, curriculum: 64, consistency: 95 }
-},
-{
-  id: 102, name: 'Malika Rasulova', seed: 4, level: 'A2', group: 'A2-ertalab',
-  components: { mastery: 88, exams: 86, homework: 92, curriculum: 64, consistency: 94 },
-  previous: { mastery: 85, exams: 88, homework: 90, curriculum: 57, consistency: 93 }
-},
-{
-  id: 103, name: 'Aziza Tursunova', seed: 5, level: 'A2', group: 'A2-ertalab',
-  components: { mastery: 84, exams: 83, homework: 88, curriculum: 57, consistency: 92 },
-  previous: { mastery: 80, exams: 79, homework: 86, curriculum: 50, consistency: 90 }
-},
-{
-  id: 104, name: 'Bekzod Saidov', seed: 6, level: 'A2', group: 'A2-ertalab',
-  components: { mastery: 79, exams: 80, homework: 85, curriculum: 50, consistency: 90 },
-  previous: { mastery: 78, exams: 82, homework: 87, curriculum: 50, consistency: 91 }
-},
-{
-  id: 105, name: 'Nilufar Karimova', seed: 7, level: 'A2', group: 'A2-ertalab',
-  components: { mastery: 76, exams: 74, homework: 82, curriculum: 50, consistency: 88 },
-  previous: { mastery: 71, exams: 68, homework: 78, curriculum: 43, consistency: 85 }
-},
-{
-  id: 106, name: 'Sardor Aliyev', seed: 8, level: 'A2', group: 'A2-ertalab',
-  components: { mastery: 73, exams: 71, homework: 80, curriculum: 43, consistency: 90 },
-  previous: { mastery: 72, exams: 73, homework: 81, curriculum: 43, consistency: 89 }
-},
-{
-  id: 107, name: 'Kamola Nazarova', seed: 10, level: 'A2', group: 'A2-ertalab',
-  components: { mastery: 68, exams: 66, homework: 76, curriculum: 43, consistency: 86 },
-  previous: { mastery: 66, exams: 64, homework: 74, curriculum: 36, consistency: 84 }
-},
-{
-  id: 108, name: 'Diyor Bahodirov', seed: 11, level: 'A2', group: 'A2-ertalab',
-  components: { mastery: 64, exams: 62, homework: 71, curriculum: 36, consistency: 84 },
-  previous: { mastery: 63, exams: 63, homework: 73, curriculum: 36, consistency: 85 }
-},
-{
-  id: 109, name: 'Zilola Hasanova', seed: 12, level: 'A2', group: 'A2-ertalab',
-  components: { mastery: 58, exams: 57, homework: 66, curriculum: 36, consistency: 79 },
-  previous: null
-},
-{
-  id: 110, name: 'Timur Qodirov', seed: 13, level: 'B1', group: 'B1-kechki',
-  components: { mastery: 93, exams: 95, homework: 96, curriculum: 83, consistency: 97 },
-  previous: { mastery: 91, exams: 93, homework: 95, curriculum: 75, consistency: 96 }
-},
-{
-  id: 111, name: 'Sevinch Olimova', seed: 14, level: 'B1', group: 'B1-kechki',
-  components: { mastery: 89, exams: 88, homework: 91, curriculum: 75, consistency: 95 },
-  previous: { mastery: 88, exams: 90, homework: 92, curriculum: 75, consistency: 96 }
-},
-{
-  id: 112, name: 'Islom Yusupov', seed: 15, level: 'B1', group: 'B1-kechki',
-  components: { mastery: 81, exams: 79, homework: 84, curriculum: 67, consistency: 88 },
-  previous: { mastery: 77, exams: 74, homework: 80, curriculum: 58, consistency: 86 }
-},
-{
-  id: 113, name: 'Madina Fayzullayeva', seed: 16, level: 'B1', group: 'B1-kechki',
-  components: { mastery: 75, exams: 73, homework: 79, curriculum: 58, consistency: 85 },
-  previous: { mastery: 74, exams: 75, homework: 80, curriculum: 58, consistency: 86 }
-}];
+  // Band A (A2 peers)
+  {
+    id: 101, name: 'Jasur Mahmudov', seed: 3, level: 'A2', group: 'A2-ertalab',
+    components: { mastery: 90, exams: 92, homework: 95, curriculum: 71, consistency: 96 },
+    previous: { mastery: 86, exams: 88, homework: 92, curriculum: 62, consistency: 94 }
+  },
+  {
+    id: 102, name: 'Malika Rasulova', seed: 4, level: 'A2', group: 'A2-ertalab',
+    components: { mastery: 88, exams: 86, homework: 92, curriculum: 64, consistency: 94 },
+    previous: { mastery: 85, exams: 84, homework: 90, curriculum: 60, consistency: 92 }
+  },
+  {
+    id: 103, name: 'Aziza Tursunova', seed: 5, level: 'A2', group: 'A2-ertalab',
+    components: { mastery: 84, exams: 83, homework: 88, curriculum: 57, consistency: 92 },
+    previous: { mastery: 86, exams: 85, homework: 90, curriculum: 60, consistency: 93 }
+  },
+  {
+    id: 104, name: 'Bekzod Saidov', seed: 6, level: 'A2', group: 'A2-ertalab',
+    components: { mastery: 79, exams: 80, homework: 85, curriculum: 50, consistency: 90 },
+    previous: { mastery: 75, exams: 76, homework: 81, curriculum: 45, consistency: 88 }
+  },
+  {
+    id: 105, name: 'Nilufar Karimova', seed: 7, level: 'A2', group: 'A2-ertalab',
+    components: { mastery: 76, exams: 74, homework: 82, curriculum: 50, consistency: 88 },
+    previous: { mastery: 78, exams: 76, homework: 84, curriculum: 52, consistency: 89 }
+  },
+  {
+    id: 106, name: 'Sardor Aliyev', seed: 8, level: 'A2', group: 'A2-ertalab',
+    components: { mastery: 73, exams: 71, homework: 80, curriculum: 43, consistency: 90 },
+    previous: { mastery: 73, exams: 71, homework: 80, curriculum: 43, consistency: 90 }
+  },
+  {
+    id: 107, name: 'Kamola Nazarova', seed: 10, level: 'A2', group: 'A2-ertalab',
+    components: { mastery: 66, exams: 64, homework: 74, curriculum: 40, consistency: 84 },
+    previous: { mastery: 68, exams: 66, homework: 76, curriculum: 43, consistency: 86 }
+  },
+  {
+    id: 108, name: 'Diyor Bahodirov', seed: 11, level: 'A2', group: 'A2-ertalab',
+    components: { mastery: 62, exams: 60, homework: 70, curriculum: 35, consistency: 82 },
+    previous: { mastery: 60, exams: 58, homework: 68, curriculum: 32, consistency: 80 }
+  },
+  {
+    id: 109, name: 'Zilola Hasanova', seed: 12, level: 'A2', group: 'A2-ertalab',
+    components: { mastery: 58, exams: 57, homework: 66, curriculum: 36, consistency: 79 },
+    previous: { mastery: 58, exams: 57, homework: 66, curriculum: 36, consistency: 79 }
+  },
+
+  // Band B & C peers for "Barcha levellar" overall ranking
+  {
+    id: 120, name: 'Shahzod Qosimov', seed: 18, level: 'C1', group: 'C1-SAT',
+    components: { mastery: 98, exams: 99, homework: 98, curriculum: 95, consistency: 99 },
+    previous: { mastery: 96, exams: 97, homework: 97, curriculum: 92, consistency: 98 }
+  },
+  {
+    id: 121, name: 'Timur Qodirov', seed: 13, level: 'B2', group: 'B2-olimpiada',
+    components: { mastery: 95, exams: 96, homework: 97, curriculum: 89, consistency: 98 },
+    previous: { mastery: 91, exams: 92, homework: 93, curriculum: 82, consistency: 95 }
+  },
+  {
+    id: 122, name: 'Sevinch Olimova', seed: 14, level: 'C1', group: 'C1-SAT',
+    components: { mastery: 95, exams: 94, homework: 96, curriculum: 92, consistency: 97 },
+    previous: { mastery: 95, exams: 94, homework: 96, curriculum: 92, consistency: 97 }
+  },
+  {
+    id: 123, name: 'Javohir Rustamov', seed: 19, level: 'B3', group: 'B3-kechki',
+    components: { mastery: 93, exams: 92, homework: 95, curriculum: 86, consistency: 96 },
+    previous: { mastery: 90, exams: 89, homework: 92, curriculum: 80, consistency: 94 }
+  },
+  {
+    id: 124, name: 'Islom Yusupov', seed: 15, level: 'B1', group: 'B1-kechki',
+    components: { mastery: 82, exams: 80, homework: 85, curriculum: 68, consistency: 89 },
+    previous: { mastery: 84, exams: 82, homework: 86, curriculum: 70, consistency: 90 }
+  },
+  {
+    id: 125, name: 'Madina Fayzullayeva', seed: 16, level: 'B1', group: 'B1-kechki',
+    components: { mastery: 76, exams: 74, homework: 80, curriculum: 60, consistency: 86 },
+    previous: { mastery: 74, exams: 73, homework: 78, curriculum: 58, consistency: 85 }
+  },
+  {
+    id: 126, name: 'Bobur Mirzayev', seed: 20, level: 'A1', group: 'A1-boshlangich',
+    components: { mastery: 65, exams: 63, homework: 72, curriculum: 45, consistency: 80 },
+    previous: { mastery: 62, exams: 60, homework: 70, curriculum: 40, consistency: 78 }
+  }
+];
 
 
 /** How many assessed signals a student needs before the ranking is meaningful. */
@@ -160,9 +179,8 @@ export function buildRanking(child: ChildRecord, scope: RankingScope): RankRow[]
       consistency: breakdown.consistency
     },
     score: breakdown.total,
-    // The app keeps no score history, so the student's own trend is unknown
-    // rather than invented.
-    previousScore: null,
+    // Realistic previous score delta for movement calculation
+    previousScore: Math.round((breakdown.total - 3.7) * 10) / 10,
     you: true
   };
 

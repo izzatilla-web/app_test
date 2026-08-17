@@ -215,9 +215,383 @@ const aliLevels: CurriculumLevel[] = [
     topics: [
     { id: 126, title: 'Chiziqli tenglama', studied: false, mastery: null, lessons: 5, content: content([video('Chiziqli tenglama', 889, false)], '') },
     { id: 127, title: 'Tenglamalar sistemasi', studied: false, mastery: null, lessons: 5, content: content([video('Tenglamalar sistemasi', 932, false)], '') }]
-
+  },
+  {
+    id: 33,
+    code: 'A3.3',
+    title: "Ko‘phadlar",
+    examTopic: null,
+    topics: [
+    { id: 128, title: "Qisqa ko‘paytirish", studied: false, mastery: null, lessons: 4, content: content([video("Ko‘paytirish formulalari", 710, false)], '') },
+    { id: 129, title: "Ko‘paytuvchilarga ajratish", studied: false, mastery: null, lessons: 4, content: content([video("Guruhlash usuli", 640, false)], '') }]
   }]
-
+},
+{
+  id: 4,
+  code: 'B1',
+  title: 'Algebra va funksiyalar',
+  modules: [
+  {
+    id: 41,
+    code: 'B1.1',
+    title: 'Kvadrat tenglamalar',
+    examTopic: 'Kvadrat tenglamalar',
+    topics: [
+    { id: 130, title: 'Diskriminant', studied: false, mastery: null, lessons: 3, content: content([video('Diskriminant', 721, false)], '') },
+    { id: 131, title: 'Viet teoremasi', studied: false, mastery: null, lessons: 3, content: content([video('Viet teoremasi', 654, false)], '') },
+    { id: 132, title: 'Tenglama ildizlari', studied: false, mastery: null, lessons: 3, content: content([video('Ildizlarni topish', 788, false)], '') }]
+  },
+  {
+    id: 42,
+    code: 'B1.2',
+    title: 'Funksiyalar',
+    examTopic: 'Funksiyalar',
+    topics: [
+    { id: 133, title: 'Funksiya tushunchasi', studied: false, mastery: null, lessons: 3, content: content([video('Funksiya nima?', 612, false)], '') },
+    { id: 134, title: 'Chiziqli funksiya', studied: false, mastery: null, lessons: 3, content: content([video('Chiziqli funksiya', 705, false)], '') }]
+  },
+  {
+    id: 43,
+    code: 'B1.3',
+    title: 'Ratsional ifodalar',
+    examTopic: null,
+    topics: [
+    { id: 135, title: 'Kasr ratsional ifodalar', studied: false, mastery: null, lessons: 4, content: content([video('Kasr ifodalar', 760, false)], '') }]
+  }]
+},
+{
+  id: 5,
+  code: 'B2',
+  title: 'Grafiklar va geometriya',
+  modules: [
+  {
+    id: 51,
+    code: 'B2.1',
+    title: 'Koordinata tekisligi',
+    examTopic: null,
+    topics: [
+    { id: 136, title: 'Nuqta va kesma', studied: false, mastery: null, lessons: 2, content: content([video('Nuqta va kesma', 486, false)], '') },
+    { id: 137, title: 'Grafik qurish', studied: false, mastery: null, lessons: 3, content: content([video('Grafik qurish', 731, false)], '') }]
+  },
+  {
+    id: 52,
+    code: 'B2.2',
+    title: 'Grafik tahlili',
+    examTopic: null,
+    topics: [
+    { id: 138, title: "O‘sish va kamayish", studied: false, mastery: null, lessons: 3, content: content([video("O‘sish va kamayish", 668, false)], '') },
+    { id: 139, title: 'Ekstremum nuqtalari', studied: false, mastery: null, lessons: 4, content: content([video('Ekstremum nuqtalari', 852, false)], '') }]
+  },
+  {
+    id: 53,
+    code: 'B2.3',
+    title: 'Planimetriya',
+    examTopic: null,
+    topics: [
+    { id: 140, title: 'Uchburchaklar', studied: false, mastery: null, lessons: 4, content: content([video('Uchburchaklar', 810, false)], '') }]
+  }]
+},
+{
+  id: 6,
+  code: 'B3',
+  title: 'Progressiyalar',
+  modules: [
+  {
+    id: 61,
+    code: 'B3.1',
+    title: 'Arifmetik progressiya',
+    examTopic: null,
+    topics: [
+    { id: 141, title: 'Umumiy had formulasi', studied: false, mastery: null, lessons: 3, content: content([video('Umumiy had', 624, false)], '') },
+    { id: 142, title: 'Yig‘indi formulasi', studied: false, mastery: null, lessons: 3, content: content([video('Yig‘indi formulasi', 690, false)], '') }]
+  },
+  {
+    id: 62,
+    code: 'B3.2',
+    title: 'Geometrik progressiya',
+    examTopic: null,
+    topics: [
+    { id: 143, title: 'Maxraj va hadlar', studied: false, mastery: null, lessons: 4, content: content([video('Geometrik progressiya', 803, false)], '') }]
+  },
+  {
+    id: 63,
+    code: 'B3.3',
+    title: 'Stereometriya',
+    examTopic: null,
+    topics: [
+    { id: 144, title: 'Fazoviy jismlar', studied: false, mastery: null, lessons: 4, content: content([video('Fazoviy jismlar', 840, false)], '') }]
+  }]
+},
+{
+  id: 7,
+  code: 'C1',
+  title: 'SAT va Xalqaro Matematika',
+  modules: [
+  {
+    id: 71,
+    code: 'C1.1',
+    title: 'Heart of Algebra',
+    examTopic: 'SAT Algebra',
+    topics: [
+    { id: 145, title: 'Linear Equations & Systems', studied: false, mastery: null, lessons: 4, content: content([video('SAT Algebra', 910, false)], '') },
+    { id: 146, title: 'Linear Inequalities', studied: false, mastery: null, lessons: 3, content: content([video('Inequalities', 820, false)], '') }]
+  },
+  {
+    id: 72,
+    code: 'C1.2',
+    title: 'Problem Solving & Data',
+    examTopic: null,
+    topics: [
+    { id: 147, title: 'Ratios, Rates & Proportions', studied: false, mastery: null, lessons: 3, content: content([video('Data Analysis', 780, false)], '') }]
+  },
+  {
+    id: 73,
+    code: 'C1.3',
+    title: 'Passport to Advanced Math',
+    examTopic: 'Advanced Math',
+    topics: [
+    { id: 148, title: 'Nonlinear Functions', studied: false, mastery: null, lessons: 4, content: content([video('Nonlinear Math', 890, false)], '') }]
+  }]
+},
+{
+  id: 8,
+  code: 'C2',
+  title: 'DTM va Milliy Sertifikat',
+  modules: [
+  {
+    id: 81,
+    code: 'C2.1',
+    title: 'DTM Test Strategiyalari',
+    examTopic: 'DTM',
+    topics: [
+    { id: 149, title: 'Standart test tahlili', studied: false, mastery: null, lessons: 3, content: content([video('DTM Test', 750, false)], '') }]
+  },
+  {
+    id: 82,
+    code: 'C2.2',
+    title: 'Murakkab misollar',
+    examTopic: null,
+    topics: [
+    { id: 150, title: 'Trigonometrik tenglamalar', studied: false, mastery: null, lessons: 4, content: content([video('Trigonometriya', 830, false)], '') }]
+  },
+  {
+    id: 83,
+    code: 'C2.3',
+    title: 'Milliy Sertifikat Imtihoni',
+    examTopic: 'Sertifikat',
+    topics: [
+    { id: 151, title: 'A+ daraja imtihon amaliyoti', studied: false, mastery: null, lessons: 4, content: content([video('Milliy Sertifikat', 820, false)], '') }]
+  }]
+},
+{
+  id: 9,
+  code: 'C3',
+  title: 'Matematik Analiz Asoslari',
+  modules: [
+  {
+    id: 91,
+    code: 'C3.1',
+    title: 'Ketma-ketlik va limitlar',
+    examTopic: null,
+    topics: [
+    { id: 152, title: 'Funksiya limiti', studied: false, mastery: null, lessons: 4, content: content([video('Limitlar', 860, false)], '') }]
+  },
+  {
+    id: 92,
+    code: 'C3.2',
+    title: 'Hosilaning ta’rifi',
+    examTopic: null,
+    topics: [
+    { id: 153, title: 'Hosila hisoblash qoidalari', studied: false, mastery: null, lessons: 4, content: content([video('Hosilalar', 920, false)], '') }]
+  },
+  {
+    id: 93,
+    code: 'C3.3',
+    title: 'Integral tushunchasi',
+    examTopic: null,
+    topics: [
+    { id: 154, title: 'Aniqmas integral', studied: false, mastery: null, lessons: 5, content: content([video('Integrallar', 950, false)], '') }]
+  }]
+},
+{
+  id: 10,
+  code: 'D1',
+  title: 'Olimpiada Matematikasi I',
+  modules: [
+  {
+    id: 101,
+    code: 'D1.1',
+    title: 'Sonlar nazariyasi',
+    examTopic: 'Olimpiada I',
+    topics: [
+    { id: 155, title: 'Taqqoslamalar va qoldiqlar', studied: false, mastery: null, lessons: 4, content: content([video('Sonlar nazariyasi', 880, false)], '') }]
+  },
+  {
+    id: 102,
+    code: 'D1.2',
+    title: 'Kombinatorika asoslari',
+    examTopic: null,
+    topics: [
+    { id: 156, title: 'Dirixle prinsipi', studied: false, mastery: null, lessons: 4, content: content([video('Dirixle', 760, false)], '') }]
+  },
+  {
+    id: 103,
+    code: 'D1.3',
+    title: 'Grafik nazariyasi',
+    examTopic: null,
+    topics: [
+    { id: 157, title: 'Graflar va daraxtlar', studied: false, mastery: null, lessons: 4, content: content([video('Graflar', 840, false)], '') }]
+  }]
+},
+{
+  id: 11,
+  code: 'D2',
+  title: 'Olimpiada Geometriyasi II',
+  modules: [
+  {
+    id: 111,
+    code: 'D2.1',
+    title: 'Cheva va Menelay',
+    examTopic: 'Olimpiada II',
+    topics: [
+    { id: 158, title: 'Cheva teoremasi', studied: false, mastery: null, lessons: 4, content: content([video('Cheva', 900, false)], '') }]
+  },
+  {
+    id: 112,
+    code: 'D2.2',
+    title: 'Aylana va to‘rtburchaklar',
+    examTopic: null,
+    topics: [
+    { id: 159, title: 'Inscribed Quad Properties', studied: false, mastery: null, lessons: 4, content: content([video('Aylana geometriyasi', 870, false)], '') }]
+  },
+  {
+    id: 113,
+    code: 'D2.3',
+    title: 'Trigonometrik usullar',
+    examTopic: null,
+    topics: [
+    { id: 160, title: 'Geometriyada trigonometriya', studied: false, mastery: null, lessons: 4, content: content([video('Trig usullari', 830, false)], '') }]
+  }]
+},
+{
+  id: 12,
+  code: 'D3',
+  title: 'Murakkab Tengsizliklar',
+  modules: [
+  {
+    id: 121,
+    code: 'D3.1',
+    title: 'Koshi-Bunyakovskiy',
+    examTopic: 'Olimpiada III',
+    topics: [
+    { id: 161, title: 'CBS tengsizligi', studied: false, mastery: null, lessons: 4, content: content([video('CBS', 910, false)], '') }]
+  },
+  {
+    id: 122,
+    code: 'D3.2',
+    title: 'Yensen tengsizligi',
+    examTopic: null,
+    topics: [
+    { id: 162, title: 'Qavariq funksiyalar', studied: false, mastery: null, lessons: 4, content: content([video('Yensen', 890, false)], '') }]
+  },
+  {
+    id: 123,
+    code: 'D3.3',
+    title: 'Funksional tenglamalar',
+    examTopic: null,
+    topics: [
+    { id: 163, title: 'Koshi funksional tenglamasi', studied: false, mastery: null, lessons: 5, content: content([video('Funksional', 940, false)], '') }]
+  }]
+},
+{
+  id: 13,
+  code: 'E1',
+  title: 'Oliy Matematika: Chiziqli Algebra',
+  modules: [
+  {
+    id: 131,
+    code: 'E1.1',
+    title: 'Matritsalar va Determinantlar',
+    examTopic: 'Oliy Math I',
+    topics: [
+    { id: 164, title: 'Matritsa amallari', studied: false, mastery: null, lessons: 4, content: content([video('Matritsalar', 920, false)], '') }]
+  },
+  {
+    id: 132,
+    code: 'E1.2',
+    title: 'Vektor fazolari',
+    examTopic: null,
+    topics: [
+    { id: 165, title: 'Baza va o‘lcham', studied: false, mastery: null, lessons: 4, content: content([video('Vektorlar', 880, false)], '') }]
+  },
+  {
+    id: 133,
+    code: 'E1.3',
+    title: 'Xos sonlar va xos vektorlar',
+    examTopic: null,
+    topics: [
+    { id: 166, title: 'Eigenvalues & Eigenvectors', studied: false, mastery: null, lessons: 5, content: content([video('Eigenvalues', 960, false)], '') }]
+  }]
+},
+{
+  id: 14,
+  code: 'E2',
+  title: 'Differensial Tenglamalar',
+  modules: [
+  {
+    id: 141,
+    code: 'E2.1',
+    title: 'Birinchi tartibli tenglamalar',
+    examTopic: 'Oliy Math II',
+    topics: [
+    { id: 167, title: 'O‘zgaruvchilari ajraladigan tenglamalar', studied: false, mastery: null, lessons: 4, content: content([video('Diff tenglamalar', 900, false)], '') }]
+  },
+  {
+    id: 142,
+    code: 'E2.2',
+    title: 'Yuqori tartibli chiziqli tenglamalar',
+    examTopic: null,
+    topics: [
+    { id: 168, title: 'Bir jinsli bo‘lmagan tenglamalar', studied: false, mastery: null, lessons: 5, content: content([video('Yuqori tartibli', 930, false)], '') }]
+  },
+  {
+    id: 143,
+    code: 'E2.3',
+    title: 'Laplas almashtirishi',
+    examTopic: null,
+    topics: [
+    { id: 169, title: 'Laplas usuli bilan yechish', studied: false, mastery: null, lessons: 5, content: content([video('Laplas', 980, false)], '') }]
+  }]
+},
+{
+  id: 15,
+  code: 'E3',
+  title: 'Ehtimollar Nazariyasi & Data Science',
+  modules: [
+  {
+    id: 151,
+    code: 'E3.1',
+    title: 'Tasodifiy miqdorlar',
+    examTopic: 'Oliy Math III',
+    topics: [
+    { id: 170, title: 'Taqsimot qonunlari', studied: false, mastery: null, lessons: 4, content: content([video('Ehtimollik', 890, false)], '') }]
+  },
+  {
+    id: 152,
+    code: 'E3.2',
+    title: 'Matematik statistika',
+    examTopic: null,
+    topics: [
+    { id: 171, title: 'Gipotezalarni tekshirish', studied: false, mastery: null, lessons: 4, content: content([video('Statistika', 910, false)], '') }]
+  },
+  {
+    id: 153,
+    code: 'E3.3',
+    title: 'Amaliy hisoblash algoritmlari',
+    examTopic: null,
+    topics: [
+    { id: 172, title: 'Gradient tushish va optimallash', studied: false, mastery: null, lessons: 5, content: content([video('Optimallash', 990, false)], '') }]
+  }]
 }];
 
 

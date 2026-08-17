@@ -69,4 +69,46 @@ export const ASSETS_3D = {
   calendar3d: '/assets/3d/calendar_3d.png',
   passport3d: '/assets/3d/passport_3d.png',
   schedule3d: '/assets/3d/schedule_3d.png',
+  levelA1: '/assets/3d/level_a1.png',
+  levelA2: '/assets/3d/level_a2.png',
+  levelA3: '/assets/3d/level_a3.png',
+  levelB1: '/assets/3d/level_b1.png',
+  levelB2: '/assets/3d/level_b2.png',
+  levelB3: '/assets/3d/level_b3.png',
+  levelC: '/assets/3d/level_c.png',
+  levelC2: '/assets/3d/level_c2.png',
+  levelC3: '/assets/3d/level_c3.png',
+  levelD: '/assets/3d/level_d.png',
+  levelD1: '/assets/3d/level_d1.png',
+  levelE: '/assets/3d/level_e.png',
 };
+
+/**
+ * Intelligent 3D math asset resolver for any level returned by CRM.
+ * Seamlessly resolves specific level codes (A1..E1) or band prefixes (A, B, C, D, E).
+ */
+export function getLevel3DAsset(levelCode: string): string {
+  const code = (levelCode || '').toUpperCase().trim();
+
+  // Exact code matches
+  if (code === 'A1') return ASSETS_3D.levelA1;
+  if (code === 'A2') return ASSETS_3D.levelA2;
+  if (code === 'A3') return ASSETS_3D.levelA3;
+  if (code === 'B1') return ASSETS_3D.levelB1;
+  if (code === 'B2') return ASSETS_3D.levelB2;
+  if (code === 'B3') return ASSETS_3D.levelB3;
+  if (code === 'C1' || code === 'C-SAT') return ASSETS_3D.levelC;
+  if (code === 'C2' || code === 'C-DTM') return ASSETS_3D.levelC2;
+  if (code === 'C3') return ASSETS_3D.levelC3;
+  if (code === 'D1') return ASSETS_3D.levelD1;
+  if (code === 'D2' || code === 'D3') return ASSETS_3D.levelD;
+  if (code.startsWith('E')) return ASSETS_3D.levelE;
+
+  // Band fallback matches
+  if (code.startsWith('A')) return ASSETS_3D.levelA1;
+  if (code.startsWith('B')) return ASSETS_3D.levelB1;
+  if (code.startsWith('C')) return ASSETS_3D.levelC;
+  if (code.startsWith('D')) return ASSETS_3D.levelD;
+
+  return ASSETS_3D.levelA2;
+}

@@ -126,7 +126,7 @@ export function ScrollScreen({
         onPointerUp={onPointerUp}
         onPointerCancel={onPointerUp}
         className="no-scrollbar h-full overflow-y-auto overscroll-contain"
-        style={{ paddingTop: offline ? 118 : 88, paddingBottom: 132 }}>
+        style={{ paddingTop: offline ? 118 : 88, paddingBottom: 84 }}>
         
         <div style={{ transform: `translateY(${pull}px)`, transition: pull === 0 ? 'transform 250ms cubic-bezier(0.23,1,0.32,1)' : undefined }}>
           <LargeTitle
@@ -160,19 +160,27 @@ export function PushScreen({ title, backTitle, onBack, trailing, children }: Pus
     <div className="relative h-full w-full bg-background">
       <NavBar
         title={title}
-        showTitle
+        showTitle={scrolled}
         scrolled={scrolled}
         backTitle={backTitle}
         onBack={onBack}
-        trailing={trailing} />
+        trailing={trailing}
+      />
       
       <div
         ref={ref}
-        onScroll={(e) => setScrolled(e.currentTarget.scrollTop > 4)}
-        className="no-scrollbar h-full overflow-y-auto overscroll-contain pb-[60px] pt-[100px]">
-        
+        onScroll={(e) => setScrolled(e.currentTarget.scrollTop > 8)}
+        className="no-scrollbar h-full overflow-y-auto overscroll-contain pb-[60px] pt-[88px]"
+      >
+        {/* Prominent Screen Title comfortably placed below the Navigation Bar */}
+        <div className="px-5 pb-2 pt-2 text-center">
+          <h1 className="font-display text-xl sm:text-2xl font-bold tracking-tight text-foreground">
+            {title}
+          </h1>
+        </div>
+
         {children}
       </div>
-    </div>);
-
+    </div>
+  );
 }

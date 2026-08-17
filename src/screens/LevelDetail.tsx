@@ -3,7 +3,7 @@ import { PushScreen } from '../components/ScrollScreen';
 import { StatusPill } from '../components/StatusPill';
 import { VideoSheet } from '../components/VideoSheet';
 import { t } from '../strings';
-import { formatDuration, haptic, ASSETS_3D } from '../tokens';
+import { formatDuration, haptic, ASSETS_3D, getLevel3DAsset } from '../tokens';
 import { levelProgress, moduleExam, topicAccess } from '../access';
 import { curriculumFor } from '../curriculum';
 import type { CurriculumTopic } from '../curriculum';
@@ -14,8 +14,8 @@ import { ModuleDetail } from './ModuleDetail';
 
 /**
  * Level Detail Screen — Matching reference Screen 3:
- * 3D Medal completion hero, Imtihon Natijasi card with 3D book stack & cap,
- * and clean module/topic list.
+ * Dynamic Status (Yakunlandi / O'rganilmoqda / O'tilmagan), 3D Medal with Celebration Confetti,
+ * Imtihon Natijasi card with 3D book stack & cap, and clean module/topic list.
  */
 export function LevelDetail({ child, levelId }: { child: ChildRecord; levelId: number }) {
   const ui = useUI();
@@ -24,6 +24,9 @@ export function LevelDetail({ child, levelId }: { child: ChildRecord; levelId: n
   if (!currentLevel) return null;
 
   const progress = levelProgress(currentLevel);
+  const isFinished = progress.percent === 100;
+  const isInProgress = progress.percent > 0 && progress.percent < 100;
+  const heroAsset = isFinished ? ASSETS_3D.goldMedalRibbon : getLevel3DAsset(currentLevel.code);
 
   function openModule(moduleIndex: number) {
     const targetModule = currentLevel?.modules[moduleIndex];
@@ -37,13 +40,12 @@ export function LevelDetail({ child, levelId }: { child: ChildRecord; levelId: n
   }
 
   function openVideo(topic: CurriculumTopic) {
-    const video = topic.content.videos[0];
-    if (!video) return;
+    if (!topic.content.videos.length) return;
     haptic('light');
     ui.openSheet({
       key: `video-${topic.id}`,
-      detent: 'medium',
-      node: <VideoSheet video={video} topicTitle={topic.title} />
+      detent: topic.content.videos.length > 1 ? 'large' : 'medium',
+      node: <VideoSheet topic={topic} />
     });
   }
 
@@ -54,19 +56,38 @@ export function LevelDetail({ child, levelId }: { child: ChildRecord; levelId: n
       onBack={ui.pop}
     >
       <div className="space-y-5 px-4 pb-20">
-        {/* Top Celebration Hero */}
+        {/* Top Status Hero — Dynamic based on level completion */}
         <div className="flex flex-col items-center pt-2 text-center">
-          <span className="flex items-center gap-1.5 rounded-full bg-emerald-50 px-3 py-0.5 font-sans text-xs font-semibold text-emerald-600 dark:bg-emerald-950/50 dark:text-emerald-400">
-            <CheckIcon size={12} strokeWidth={3.5} />
-            {t.lsDoneBadge}
-          </span>
+          {isFinished ? (
+            <span className="flex items-center gap-1.5 rounded-full bg-emerald-50 px-3 py-0.5 font-sans text-xs font-semibold text-emerald-600 dark:bg-emerald-950/50 dark:text-emerald-400">
+              <CheckIcon size={12} strokeWidth={3.5} />
+              {t.lsDoneBadge}
+            </span>
+          ) : isInProgress ? (
+            <span className="flex items-center gap-1.5 rounded-full bg-blue-50 px-3 py-0.5 font-sans text-xs font-semibold text-blue-600 dark:bg-blue-950/50 dark:text-blue-400">
+              <span className="h-1.5 w-1.5 rounded-full bg-blue-600 animate-pulse" />
+              {t.lsInProgressBadge}
+            </span>
+          ) : (
+            <span className="flex items-center gap-1.5 rounded-full bg-slate-100 px-3 py-0.5 font-sans text-xs font-semibold text-slate-500 dark:bg-slate-800 dark:text-slate-400">
+              <LockIcon size={12} />
+              {t.lsLockedBadge}
+            </span>
+          )}
 
-          {/* 3D Gold Medal Asset — Transparent PNG */}
-          <div className="relative my-2 flex h-32 w-32 items-center justify-center">
+          {/* 3D Asset Container */}
+          <div className="relative my-2 flex h-32 w-32 items-center justify-center overflow-visible">
             <img
-              src={ASSETS_3D.goldMedalRibbon}
-              alt="Yutuq medali"
-              className="h-full w-full object-contain drop-shadow-[0_10px_20px_rgba(234,179,8,0.25)]"
+              src={heroAsset}
+              alt={currentLevel.title}
+              className={[
+                'h-full w-full object-contain transition-all duration-300 relative z-10',
+                isFinished
+                  ? 'drop-shadow-[0_12px_24px_rgba(234,179,8,0.3)]'
+                  : isInProgress
+                  ? 'drop-shadow-[0_10px_20px_rgba(59,130,246,0.25)]'
+                  : 'opacity-75 grayscale-[0.25] drop-shadow-sm'
+              ].join(' ')}
             />
           </div>
 
@@ -151,12 +172,8 @@ export function LevelDetail({ child, levelId }: { child: ChildRecord; levelId: n
                     <button
                       key={topic.id}
                       type="button"
-                      disabled={locked}
                       onClick={() => openVideo(topic)}
-                      className={[
-                        'flex w-full items-center gap-3.5 p-3.5 text-left transition-colors duration-100',
-                        locked ? 'opacity-40 cursor-not-allowed' : 'active:bg-slate-50 dark:active:bg-slate-800'
-                      ].join(' ')}
+                      className="flex w-full items-center gap-3.5 p-3.5 text-left transition-colors duration-100 active:bg-slate-50 dark:active:bg-slate-800 hover:bg-slate-50/60 dark:hover:bg-slate-800/40"
                     >
                       <span className="font-display text-sm font-bold text-slate-400 dark:text-slate-500 w-6 text-center">
                         {numStr}
@@ -174,10 +191,8 @@ export function LevelDetail({ child, levelId }: { child: ChildRecord; levelId: n
                           <div className="flex h-7 w-7 items-center justify-center rounded-full bg-emerald-100 text-emerald-600 dark:bg-emerald-950 dark:text-emerald-400">
                             <CheckIcon size={13} strokeWidth={3} />
                           </div>
-                        ) : locked ? (
-                          <LockIcon size={14} className="text-mutedfg" />
                         ) : (
-                          <div className="flex h-7 w-7 items-center justify-center rounded-full bg-blue-600 text-white shadow-sm">
+                          <div className="flex h-7 w-7 items-center justify-center rounded-full bg-blue-600 text-white shadow-sm transition-transform active:scale-90">
                             <PlayIcon size={11} className="ml-0.5 fill-current" />
                           </div>
                         )}

@@ -3,16 +3,17 @@ import { ScrollScreen } from '../components/ScrollScreen';
 import { ChildSwitcher } from '../components/ChildSwitcher';
 import { ScreenSkeleton } from '../components/Skeleton';
 import { ErrorState } from '../components/ErrorState';
-import { ProgressOverview } from '../components/ProgressOverview';
+import { AcademicPassportView } from '../components/AcademicPassportView';
 import { ExamsSection, SupportSection } from '../components/ProgressSections';
 import { t } from '../strings';
 import { childById, children } from '../mockData';
 import { useUI } from '../ui';
 
 /**
- * Parent progress. Weak points are absent by design — a parent never sees them.
+ * Parent progress — Academic Forecast & Causes Breakdown.
+ * Weak points are absent by design (E12 rule) — parent sees causes & what-if forecasts.
  */
-export function ParentProgress({ scrollSignal }: {scrollSignal: number;}) {
+export function ParentProgress({ scrollSignal }: { scrollSignal: number }) {
   const ui = useUI();
   const { dataState } = ui;
   const child = childById(ui.activeChildId);
@@ -21,24 +22,31 @@ export function ParentProgress({ scrollSignal }: {scrollSignal: number;}) {
   return (
     <ScrollScreen
       title={t.tabProgress}
+      subtitle={t.progressSubtitle}
       scrollKey="parent-progress"
       scrollToTopSignal={scrollSignal}
       offline={dataState === 'offline'}
       belowTitle={
-      <ChildSwitcher children={children} activeId={ui.activeChildId} onSelect={ui.setActiveChildId} />
-      }>
-      
-      {dataState === 'loading' ?
-      <ScreenSkeleton /> :
-      dataState === 'error' ?
-      <ErrorState onRetry={() => undefined} /> :
-
-      <div className="space-y-8">
-          {!empty && <ProgressOverview child={child} />}
-          <ExamsSection exams={empty ? [] : child.exams} />
-          {!empty && <SupportSection sessions={child.supportSessions} />}
-        </div>
+        <ChildSwitcher
+          children={children}
+          activeId={ui.activeChildId}
+          onSelect={ui.setActiveChildId}
+        />
       }
-    </ScrollScreen>);
-
+    >
+      {dataState === 'loading' ? (
+        <ScreenSkeleton />
+      ) : dataState === 'error' ? (
+        <ErrorState onRetry={() => undefined} />
+      ) : (
+        <div className="space-y-6">
+          {!empty && <AcademicPassportView child={child} isParent={true} />}
+          <div className="space-y-6 px-4 pb-12">
+            <ExamsSection exams={empty ? [] : child.exams} />
+            {!empty && <SupportSection sessions={child.supportSessions} />}
+          </div>
+        </div>
+      )}
+    </ScrollScreen>
+  );
 }

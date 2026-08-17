@@ -44,13 +44,12 @@ export function ModuleDetail({ levels, level, module }: ModuleDetailProps) {
   const durationStr = hours > 0 ? `${hours}h ${minutes}min` : `${minutes} min`;
 
   function openVideo(topic: CurriculumTopic) {
-    const video = topic.content.videos[0];
-    if (!video) return;
+    if (!topic.content.videos.length) return;
     haptic('light');
     ui.openSheet({
       key: `video-${topic.id}`,
-      detent: 'medium',
-      node: <VideoSheet video={video} topicTitle={topic.title} />
+      detent: topic.content.videos.length > 1 ? 'large' : 'medium',
+      node: <VideoSheet topic={topic} />
     });
   }
 
@@ -64,11 +63,14 @@ export function ModuleDetail({ levels, level, module }: ModuleDetailProps) {
         {/* 1. Top Video Hero Banner */}
         <div className="pt-1">
           <div
-            className="relative aspect-video w-full overflow-hidden rounded-2xl shadow-sm text-white flex flex-col items-center justify-center p-6 text-center"
+            className="relative aspect-video w-full overflow-hidden rounded-2xl text-white flex flex-col items-center justify-center p-6 text-center backdrop-blur-xl border border-white/40 shadow-[0_8px_32px_0_rgba(31,38,135,0.18),inset_0_1px_1px_0_rgba(255,255,255,0.4)] dark:border-white/20"
             style={{
-              background: 'linear-gradient(135deg, #1E3A8A 0%, #2563EB 55%, #3B82F6 100%)'
+              background: 'linear-gradient(135deg, rgba(37, 99, 235, 0.80) 0%, rgba(59, 130, 246, 0.74) 40%, rgba(96, 165, 250, 0.68) 75%, rgba(147, 197, 253, 0.62) 100%)'
             }}
           >
+            {/* Top-down subtle specular glass sheen */}
+            <div className="pointer-events-none absolute inset-x-0 top-0 h-1/2 bg-gradient-to-b from-white/20 via-white/5 to-transparent" />
+
             <button
               type="button"
               onClick={() => {
@@ -88,13 +90,10 @@ export function ModuleDetail({ levels, level, module }: ModuleDetailProps) {
 
         {/* 2. Clean Title & Meta */}
         <div>
-          <span className="font-sans text-xs font-bold text-blue-600 dark:text-blue-400">
-            {module.code} Modul · {level.title}
-          </span>
-          <h1 className="mt-0.5 font-display text-2xl font-bold tracking-tight text-foreground">
+          <h1 className="font-display text-2xl font-bold tracking-tight text-foreground">
             {module.title}
           </h1>
-          <div className="mt-2 flex items-center gap-3 font-sans text-xs text-mutedfg">
+          <div className="mt-1.5 flex items-center gap-2.5 font-sans text-xs text-mutedfg">
             <span>{module.topics.length} ta dars</span>
             <span>·</span>
             <span className="flex items-center gap-1">
@@ -113,24 +112,22 @@ export function ModuleDetail({ levels, level, module }: ModuleDetailProps) {
           <div className="space-y-2.5">
             {module.topics.map((topic, index) => {
               const state = topicAccess(levels, topic);
-              const locked = state === 'locked';
               const completed = state === 'completed';
               const current = state === 'current';
-              const video = topic.content.videos[0];
+              const totalTopicSecs = topic.content.videos.reduce((acc, v) => acc + v.seconds, 0);
+              const videoCount = topic.content.videos.length;
               const numStr = String(index + 1).padStart(2, '0');
 
               return (
                 <button
                   key={topic.id}
                   type="button"
-                  disabled={locked}
                   onClick={() => openVideo(topic)}
                   className={[
-                    'flex w-full items-center gap-3.5 rounded-2xl border p-4 text-left transition-all duration-150 active:scale-[0.99]',
+                    'group flex w-full items-center gap-3.5 rounded-2xl border p-4 text-left transition-all duration-150 active:scale-[0.99] hover:border-slate-300 dark:hover:border-slate-700',
                     current
                       ? 'border-blue-500/50 bg-blue-50/40 shadow-sm dark:bg-blue-950/20 dark:border-blue-400/40 ring-1 ring-blue-500/20'
-                      : 'border-slate-200 bg-white shadow-sm dark:border-slate-800 dark:bg-slate-900',
-                    locked ? 'opacity-50 cursor-not-allowed' : 'hover:border-slate-300 dark:hover:border-slate-700'
+                      : 'border-slate-200 bg-white shadow-sm dark:border-slate-800 dark:bg-slate-900'
                   ].join(' ')}
                 >
                   {/* Big clean number (01, 02, 03) */}
@@ -141,7 +138,7 @@ export function ModuleDetail({ levels, level, module }: ModuleDetailProps) {
                         ? 'text-blue-600 dark:text-blue-400'
                         : completed
                         ? 'text-emerald-600 dark:text-emerald-400'
-                        : 'text-slate-300 dark:text-slate-600'
+                        : 'text-slate-400 dark:text-slate-500'
                     ].join(' ')}
                   >
                     {numStr}
@@ -158,7 +155,7 @@ export function ModuleDetail({ levels, level, module }: ModuleDetailProps) {
                       {topic.title}
                     </p>
                     <p className="mt-0.5 font-sans text-xs text-mutedfg">
-                      {video ? formatDuration(video.seconds) : '15 min'} · {completed ? "O'zlashtirildi" : current ? "Joriy dars" : "Mavzu"}
+                      {formatDuration(totalTopicSecs || 900)} {videoCount > 1 ? `(${videoCount} ta video)` : ''} · {completed ? "O‘zlashtirildi" : current ? "Joriy dars" : "Mavzu"}
                     </p>
                   </div>
 
@@ -168,13 +165,13 @@ export function ModuleDetail({ levels, level, module }: ModuleDetailProps) {
                       <div className="flex h-9 w-9 items-center justify-center rounded-full bg-emerald-100 text-emerald-600 dark:bg-emerald-950 dark:text-emerald-400">
                         <CheckCircle2Icon size={18} strokeWidth={2.4} />
                       </div>
-                    ) : locked ? (
-                      <div className="flex h-9 w-9 items-center justify-center rounded-full bg-slate-100 text-slate-400 dark:bg-slate-800">
-                        <LockIcon size={16} />
-                      </div>
-                    ) : (
+                    ) : current ? (
                       <div className="flex h-9 w-9 items-center justify-center rounded-full bg-blue-600 text-white shadow-sm transition-transform active:scale-90">
                         <PlayIcon size={14} className="ml-0.5 fill-current" />
+                      </div>
+                    ) : (
+                      <div className="flex h-9 w-9 items-center justify-center rounded-full bg-slate-100 text-slate-600 transition-colors group-hover:bg-blue-50 group-hover:text-blue-600 dark:bg-slate-800 dark:text-slate-300">
+                        <PlayIcon size={13} className="ml-0.5 fill-current opacity-75" />
                       </div>
                     )}
                   </div>

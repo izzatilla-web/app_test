@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { CalendarOffIcon, FlameIcon, CheckCircle2Icon, ClockIcon, XCircleIcon } from 'lucide-react';
+import { CalendarOffIcon, CheckCircle2Icon, ClockIcon, XCircleIcon } from 'lucide-react';
 import { CalendarMonth } from './CalendarMonth';
 import { LessonSheet } from './LessonList';
 import { EmptyState } from './EmptyState';
@@ -28,8 +28,7 @@ export function AttendanceCalendar({ child }: { child: ChildRecord }) {
   const late = monthLessons.filter((l) => l.present === 'late').length;
   const absent = monthLessons.filter((l) => l.present === 'absent').length;
   const effectiveAttended = attended + late;
-  const rate =
-    monthLessons.length === 0 ? null : Math.round((effectiveAttended / monthLessons.length) * 100);
+  const rate = monthLessons.length > 0 ? Math.round((effectiveAttended / monthLessons.length) * 100) : null;
 
   const dots: Record<string, Tone> = {};
   child.lessons.forEach((lesson) => {
@@ -40,12 +39,19 @@ export function AttendanceCalendar({ child }: { child: ChildRecord }) {
   });
 
   function step(delta: number) {
+    haptic('light');
     setSelected(null);
-    setCursor((prev) => {
-      const next = prev.month + delta;
-      if (next < 0) return { year: prev.year - 1, month: 11 };
-      if (next > 11) return { year: prev.year + 1, month: 0 };
-      return { year: prev.year, month: next };
+    setCursor((c) => {
+      let m = c.month + delta;
+      let y = c.year;
+      if (m < 0) {
+        m = 11;
+        y -= 1;
+      } else if (m > 11) {
+        m = 0;
+        y += 1;
+      }
+      return { year: y, month: m };
     });
   }
 
@@ -64,15 +70,10 @@ export function AttendanceCalendar({ child }: { child: ChildRecord }) {
   return (
     <div className="space-y-4 px-4 pb-20">
       {/* Hero Attendance Card */}
-      <div className="relative overflow-hidden rounded-2xl border border-slate-200 bg-white p-5 shadow-sm dark:border-slate-800 dark:bg-slate-900">
+      <div className="relative overflow-hidden rounded-2xl border border-slate-200/90 bg-white p-5 shadow-sm dark:border-slate-800/90 dark:bg-slate-900">
         <div className="flex items-center justify-between gap-4">
           <div className="min-w-0 flex-1">
-            <span className="inline-flex items-center gap-1 rounded-full bg-orange-50 px-2.5 py-0.5 font-sans text-xs font-semibold text-orange-600 dark:bg-orange-950/40 dark:text-orange-400">
-              <FlameIcon size={12} className="fill-current" />
-              14 kunlik streak
-            </span>
-
-            <p className="mt-2.5 font-display text-3xl font-bold tabular-nums text-foreground">
+            <p className="font-display text-3xl font-bold tabular-nums text-foreground">
               {rate !== null ? `${rate}%` : '—'}
             </p>
             <p className="mt-0.5 font-sans text-xs text-mutedfg">
