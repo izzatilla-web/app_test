@@ -48,7 +48,7 @@ export function CurriculumBrowser({ child }: { child: ChildRecord }) {
   }
 
   return (
-    <div className="space-y-6 px-4 pb-20 pt-4">
+    <div className="space-y-6 px-4 pb-10 pt-4">
       {levels.map((level) => {
         const state = levelAccess(levels, level);
         if (state === 'locked') return <LockedLevelCard key={level.id} level={level} />;

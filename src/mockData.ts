@@ -35,16 +35,25 @@ export interface Exam {
 }
 
 export interface Booking {
-  id: number;
+  id: number | string;
+  studentId?: number;
   date: string;
-  day: string;
+  day?: string;
   time: string;
+  timeSlotId?: string;
   purpose: string;
   status: 'booked' | 'attended' | 'cancelled' | 'missed';
+  cancelledAt?: string | null;
+  cancelReason?: string | null;
   teacherNote?: string;
+  workedOn?: string | null;
+  result?: 'pass' | 'conditional' | 'fail' | null;
+  resultNote?: string | null;
   needsAnother?: boolean;
-  cancelReason?: string;
   locked?: boolean;
+  slotLabel?: string;
+  teacherName?: string;
+  room?: string;
 }
 
 export interface WeakPoint {

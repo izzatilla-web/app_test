@@ -38,7 +38,7 @@ export function StudentToday({ scrollSignal }: {scrollSignal: number;}) {
   const empty = dataState === 'empty';
   const lesson = student.todayLesson;
   const presence = presencePill(lesson.status);
-  const nextBooking = bookings.find((b) => b.status === 'booked' && b.date > TODAY);
+  const nextBooking = bookings.find((b) => b.status === 'booked' && !b.cancelledAt && b.date >= TODAY);
   const latestExam = student.exams[0];
 
   return (

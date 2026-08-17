@@ -11,12 +11,11 @@ import {
 import { t } from '../strings';
 import { haptic, longDate } from '../tokens';
 import { useUI } from '../ui';
-import type { BookingSlot, WeeklyUsage } from '../types/booking';
+import type { BookingRecord, BookingSlot } from '../types/booking';
 import {
-  createBooking,
   getBookingSlots,
   getSchoolSettings,
-  getWeeklyBookingUsage
+  rescheduleBooking
 } from '../services/bookingApi';
 import {
   formatIsoDate,
@@ -28,27 +27,20 @@ import {
   parseIsoDate
 } from '../utils/tashkentTime';
 
-interface NewBookingSheetProps {
-  initialPurpose?: string;
-  initialDate?: string;
-  initialSlotId?: string;
-  onSuccess?: () => void;
+interface RescheduleBookingSheetProps {
+  booking: BookingRecord;
+  onRescheduled: (updated: BookingRecord) => void;
 }
 
-export function NewBookingSheet({
-  initialPurpose = '',
-  initialDate,
-  initialSlotId,
-  onSuccess
-}: NewBookingSheetProps) {
+export function RescheduleBookingSheet({
+  booking,
+  onRescheduled
+}: RescheduleBookingSheetProps) {
   const { closeSheet, toast } = useUI();
-
-  // Tashkent today & initial setup
   const todayIso = useMemo(() => getTashkentTodayIso(), []);
 
-  // Compute initial week Monday
   const [weekMondayIso, setWeekMondayIso] = useState<string>(() => {
-    if (initialDate) return getMondayOfWeek(initialDate);
+    if (booking.date) return getMondayOfWeek(booking.date);
     const tashkentNow = getTashkentNow();
     if (tashkentNow.getDay() === 0) {
       const nextMon = new Date(tashkentNow);
@@ -61,58 +53,33 @@ export function NewBookingSheet({
   const [schoolSettings, setSchoolSettings] = useState<{
     bookingWeekdays: string;
     holidays: string[];
-    bookingCutoff: string;
   }>({
     bookingWeekdays: '1,2,3,4,5,6',
-    holidays: [],
-    bookingCutoff: '12:00'
+    holidays: []
   });
 
-  const [date, setDate] = useState<string | null>(initialDate || null);
-  const [slotId, setSlotId] = useState<string | null>(initialSlotId || null);
-  const [purpose, setPurpose] = useState(initialPurpose);
+  const [date, setDate] = useState<string>(booking.date);
+  const [slotId, setSlotId] = useState<string>(booking.timeSlotId);
+  const [purpose, setPurpose] = useState(booking.purpose || '');
 
   const [slots, setSlots] = useState<BookingSlot[]>([]);
   const [slotsLoading, setSlotsLoading] = useState(false);
-  const [weeklyUsage, setWeeklyUsage] = useState<WeeklyUsage | null>(null);
-  const [loadingUsage, setLoadingUsage] = useState(false);
-
   const [submitting, setSubmitting] = useState(false);
   const [serverError, setServerError] = useState<string | null>(null);
 
-  // 7 days of the currently selected week
   const weekDays = useMemo(() => getDaysOfWeek(weekMondayIso), [weekMondayIso]);
 
-  // Load school settings
   useEffect(() => {
-    getSchoolSettings().then((settings) => {
+    getSchoolSettings().then((s) => {
       setSchoolSettings({
-        bookingWeekdays: settings.bookingWeekdays,
-        holidays: settings.holidays || [],
-        bookingCutoff: settings.bookingCutoff
+        bookingWeekdays: s.bookingWeekdays,
+        holidays: s.holidays || []
       });
     });
   }, []);
 
-  // Set default selected date if none selected
   useEffect(() => {
-    if (!date) {
-      const firstBookable = weekDays.find((d) => {
-        const check = isDateBookable(d.iso, schoolSettings.bookingWeekdays, schoolSettings.holidays);
-        return check.bookable;
-      });
-      if (firstBookable) {
-        setDate(firstBookable.iso);
-      }
-    }
-  }, [date, weekDays, schoolSettings]);
-
-  // Fetch slots whenever selected date changes
-  useEffect(() => {
-    if (!date) {
-      setSlots([]);
-      return;
-    }
+    if (!date) return;
 
     let isMounted = true;
     setSlotsLoading(true);
@@ -122,12 +89,6 @@ export function NewBookingSheet({
       .then((data) => {
         if (isMounted) {
           setSlots(data);
-          if (slotId) {
-            const target = data.find((s) => s.timeSlotId === slotId);
-            if (!target || target.full || target.closed) {
-              setSlotId(null);
-            }
-          }
         }
       })
       .catch((err) => {
@@ -144,59 +105,43 @@ export function NewBookingSheet({
     };
   }, [date]);
 
-  // Fetch weekly usage for the active date
-  useEffect(() => {
-    if (!date) return;
-    setLoadingUsage(true);
-    getWeeklyBookingUsage(date)
-      .then((u) => setWeeklyUsage(u))
-      .catch(() => setWeeklyUsage(null))
-      .finally(() => setLoadingUsage(false));
-  }, [date]);
-
   function shiftWeek(delta: number) {
     haptic('light');
     const curr = parseIsoDate(weekMondayIso);
     curr.setDate(curr.getDate() + delta * 7);
     const nextMonday = formatIsoDate(curr);
     setWeekMondayIso(nextMonday);
-    setDate(null);
-    setSlotId(null);
+    setDate(nextMonday);
     setServerError(null);
   }
 
-  const purposeTrimmed = purpose.trim();
-  const purposeValid = purposeTrimmed.length >= 3 && purposeTrimmed.length <= 300;
-  const isLimitReached = weeklyUsage ? weeklyUsage.count >= weeklyUsage.limit : false;
-  const ready = !!date && !!slotId && purposeValid && !submitting && !isLimitReached;
+  const trimmedPurpose = purpose.trim();
+  const purposeValid = trimmedPurpose.length >= 3 && trimmedPurpose.length <= 300;
+  const ready = !!date && !!slotId && purposeValid && !submitting;
 
-  async function handleConfirm() {
-    if (!ready || !date || !slotId || submitting) return;
+  async function handleReschedule() {
+    if (!ready || submitting) return;
 
     try {
       setSubmitting(true);
       setServerError(null);
       haptic('light');
 
-      await createBooking({
+      const updated = await rescheduleBooking(booking.id, {
         date,
         timeSlotId: slotId,
-        purpose: purposeTrimmed
+        purpose: trimmedPurpose
       });
 
       haptic('success');
-      toast(t.bookingConfirmed, 'success');
-      onSuccess?.();
+      toast(t.rescheduleSuccess, 'success');
+      onRescheduled(updated);
       closeSheet();
     } catch (err: unknown) {
       haptic('warning');
-      const msg = err instanceof Error ? err.message : 'Booking failed';
+      const msg = err instanceof Error ? err.message : 'Reschedule failed';
       setServerError(msg);
       toast(msg, 'warning');
-
-      if (date) {
-        getBookingSlots(date).then(setSlots);
-      }
     } finally {
       setSubmitting(false);
     }
@@ -204,7 +149,8 @@ export function NewBookingSheet({
 
   return (
     <Sheet
-      title={t.sheetNewBooking}
+      title={t.rescheduleTitle}
+      subtitle={`Hozirgi: ${longDate(booking.date)} · ${booking.time}`}
       detent="large"
       onClose={closeSheet}
       footer={
@@ -219,38 +165,22 @@ export function NewBookingSheet({
           <Button
             full
             disabled={!ready}
-            onClick={handleConfirm}
+            onClick={handleReschedule}
           >
             {submitting ? (
               <div className="flex items-center gap-2">
                 <div className="h-4 w-4 animate-spin rounded-full border-2 border-white border-t-transparent" />
-                <span>Yuklanmoqda...</span>
+                <span>O‘zgartirilmoqda...</span>
               </div>
             ) : (
-              t.confirmBookingButton
+              t.rescheduleConfirm
             )}
           </Button>
         </div>
       }
     >
       <div className="space-y-6 px-4 pb-4">
-        {/* Apple-style Weekly Usage Summary */}
-        {weeklyUsage && (
-          <div className="flex items-center justify-between px-1 font-sans text-footnote tabular-nums text-mutedfg">
-            <span>
-              {loadingUsage
-                ? '...'
-                : isLimitReached
-                ? t.weeklyUsageLimitReached
-                : t.weeklyUsageRemaining(weeklyUsage.remaining)}
-            </span>
-            <span className="font-semibold text-foreground">
-              {weeklyUsage.count} / {weeklyUsage.limit}
-            </span>
-          </div>
-        )}
-
-        {/* Step 1: Date Selector (Apple style week strip) */}
+        {/* Step 1: New Date Selector */}
         <section className="space-y-2">
           <div className="flex items-center justify-between px-1">
             <span className="font-sans text-section font-semibold uppercase text-mutedfg">
@@ -296,7 +226,6 @@ export function NewBookingSheet({
                   onClick={() => {
                     haptic('light');
                     setDate(iso);
-                    setSlotId(null);
                     setServerError(null);
                   }}
                   className={[
@@ -345,7 +274,7 @@ export function NewBookingSheet({
           )}
         </section>
 
-        {/* Step 2: Time Slots (Apple Grouped List) */}
+        {/* Step 2: Slot Selection */}
         <section className="space-y-2">
           <div className="flex items-center justify-between px-1">
             <span className="font-sans text-section font-semibold uppercase text-mutedfg">
@@ -367,7 +296,9 @@ export function NewBookingSheet({
             <div className="overflow-hidden rounded-card border border-cardborder bg-card">
               {slots.map((slot, index) => {
                 const isSelected = slot.timeSlotId === slotId;
-                const isFull = slot.full;
+                const isCurrentBookingSlot =
+                  date === booking.date && slot.timeSlotId === booking.timeSlotId;
+                const isFull = slot.full && !isCurrentBookingSlot;
                 const isClosed = !!slot.closed;
                 const disabled = isFull || isClosed;
                 const isLast = index === slots.length - 1;
@@ -426,21 +357,14 @@ export function NewBookingSheet({
           )}
         </section>
 
-        {/* Step 3: Purpose Input */}
+        {/* Step 3: Purpose */}
         <section className="space-y-1.5">
           <div className="flex items-center justify-between px-1">
             <span className="font-sans text-section font-semibold uppercase text-mutedfg">
               {t.stepPurpose}
             </span>
-            <span
-              className={[
-                'font-sans text-footnote tabular-nums',
-                purposeTrimmed.length > 300
-                  ? 'font-bold text-destructive'
-                  : 'text-mutedfg'
-              ].join(' ')}
-            >
-              {purposeTrimmed.length}/300
+            <span className="font-sans text-footnote text-mutedfg tabular-nums">
+              {trimmedPurpose.length}/300
             </span>
           </div>
 
@@ -454,10 +378,6 @@ export function NewBookingSheet({
             placeholder={t.purposePlaceholder}
             className="h-[50px] w-full rounded-input border border-cardborder bg-card px-4 font-sans text-body text-foreground outline-none transition-colors placeholder:text-mutedfg/60 focus:border-primary"
           />
-
-          <p className="px-1 font-sans text-footnote text-mutedfg">
-            {t.purposeHint}
-          </p>
         </section>
       </div>
     </Sheet>
