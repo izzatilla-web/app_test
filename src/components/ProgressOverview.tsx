@@ -18,6 +18,7 @@ import type { CurriculumLevel } from '../curriculum';
 import type { ChildRecord } from '../mockData';
 import { useUI } from '../ui';
 import { LevelDetail } from '../screens/LevelDetail';
+import { CollapsibleLevelBands } from './CollapsibleLevelBands';
 
 /**
  * Clean Academic Progress Overview Screen:
@@ -166,78 +167,7 @@ export function ProgressOverview({ child }: { child: ChildRecord }) {
           Darajalar bo'yicha natija
         </h3>
 
-        <div className="space-y-3">
-          {levels.map((lvl) => {
-            const isCurrent = position?.level.id === lvl.id;
-            const isCompleted = lvl.modules.every((m) =>
-              m.topics.every((t) => t.studied)
-            );
-            const doneCount = lvl.modules.reduce(
-              (acc, m) => acc + m.topics.filter((t) => t.studied).length,
-              0
-            );
-            const totalCount = lvl.modules.reduce((acc, m) => acc + m.topics.length, 0);
-            const pct = totalCount > 0 ? Math.round((doneCount / totalCount) * 100) : 0;
-
-            return (
-              <button
-                key={lvl.id}
-                type="button"
-                onClick={() => openLevel(lvl)}
-                className="group relative flex w-full flex-col overflow-hidden rounded-2xl border border-slate-200/90 bg-white px-4 pt-3.5 pb-4 text-left shadow-sm transition-all duration-200 ease-out hover:border-slate-300 active:scale-[0.985] dark:border-slate-800/90 dark:bg-slate-900 dark:hover:border-slate-700"
-              >
-                {/* Level Code */}
-                <div className="flex items-center justify-between w-full">
-                  <span
-                    className={[
-                      'font-display text-sm font-bold',
-                      isCompleted
-                        ? 'text-emerald-600 dark:text-emerald-400'
-                        : isCurrent
-                        ? 'text-blue-600 dark:text-blue-400'
-                        : 'text-slate-500 dark:text-slate-400'
-                    ].join(' ')}
-                  >
-                    {lvl.code}
-                  </span>
-                </div>
-
-                {/* Level Title & Chevron */}
-                <div className="mt-0.5 flex items-center justify-between w-full">
-                  <h4 className="truncate pr-2 font-sans text-sm sm:text-[15px] font-semibold text-foreground">
-                    {lvl.title}
-                  </h4>
-                  <div className="shrink-0 flex h-6 w-6 items-center justify-center text-slate-400 group-hover:text-slate-600 dark:group-hover:text-slate-300 transition-colors">
-                    <ChevronRightIcon size={18} className="text-slate-400 transition-transform group-hover:translate-x-0.5" />
-                  </div>
-                </div>
-
-                {/* Clean Full-Width Progress Section */}
-                <div className="mt-3.5 w-full">
-                  <div className="mb-1.5 flex items-center justify-between font-sans text-xs font-semibold tabular-nums text-mutedfg">
-                    <span>{doneCount} / {totalCount} mavzu</span>
-                    <span className={isCompleted ? 'text-emerald-600 dark:text-emerald-400 font-bold' : isCurrent ? 'text-blue-600 dark:text-blue-400 font-bold' : ''}>
-                      {pct}%
-                    </span>
-                  </div>
-                  <div className="h-1.5 w-full overflow-hidden rounded-full bg-slate-100 dark:bg-slate-800">
-                    <div
-                      className={[
-                        'bar-fill h-full rounded-full transition-all duration-500 ease-out',
-                        isCompleted
-                          ? 'bg-emerald-500'
-                          : isCurrent
-                          ? 'bg-blue-600 dark:bg-blue-500'
-                          : 'bg-slate-300 dark:bg-slate-700'
-                      ].join(' ')}
-                      style={{ width: `${pct}%` }}
-                    />
-                  </div>
-                </div>
-              </button>
-            );
-          })}
-        </div>
+        <CollapsibleLevelBands levels={levels} child={child} />
       </div>
 
       {/* 4. Strong & Weak Areas */}
