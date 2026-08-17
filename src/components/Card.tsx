@@ -1,23 +1,28 @@
 import React from "react";
 import { toneBg, toneFg } from "../tokens";
-import { BoxIcon } from "lucide-react";
+import type { LucideIcon } from "lucide-react";
+
 interface CardProps {
   children: React.ReactNode;
   className?: string;
   padded?: boolean;
 }
+
 export function Card({
   children,
   className,
   padded = true
 }: CardProps) {
-  return <div className={['rounded-card border border-cardborder bg-card', padded ? 'p-4' : '', className ?? ''].join(' ')}>
+  return (
+    <div className={['rounded-card border border-cardborder bg-card', padded ? 'p-4' : '', className ?? ''].join(' ')}>
       {children}
-    </div>;
+    </div>
+  );
 }
+
 interface AlertCardProps {
   tone: 'amber' | 'red';
-  icon: BoxIcon;
+  icon: LucideIcon;
   title: string;
   body?: string;
   children?: React.ReactNode;

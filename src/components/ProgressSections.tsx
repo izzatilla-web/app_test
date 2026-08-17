@@ -6,7 +6,7 @@ import { StatusPill } from './StatusPill';
 import { EmptyState } from './EmptyState';
 import { ScanViewer } from '../screens/ScanViewer';
 import { t } from '../strings';
-import { mediumDate, shortDate } from '../tokens';
+import { mediumDate } from '../tokens';
 import { examPill, topicPill } from '../utils/status';
 import type { Exam, SupportSession, Topic } from '../mockData';
 import { useUI } from '../ui';
@@ -154,8 +154,7 @@ export function SupportSection({ sessions }: { sessions: SupportSession[] }) {
               {mediumDate(session.date)} · {session.time}
             </span>
           }
-          secondary={session.purpose}
-          trailing={<span className="font-sans text-xs text-mutedfg">{session.mentor}</span>}
+          secondary={session.attended ? 'Qatnashgan' : 'Kutilmoqda'}
         />
       ))}
     </ListGroup>

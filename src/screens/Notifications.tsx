@@ -1,5 +1,6 @@
 import React from "react";
-import { BellOffIcon, ClockIcon, FileCheck2Icon, UserXIcon, WalletIcon, BoxIcon } from "lucide-react";
+import { BellOffIcon, ClockIcon, FileCheck2Icon, UserXIcon, WalletIcon } from "lucide-react";
+import type { LucideIcon } from "lucide-react";
 import { PushScreen } from "../components/ScrollScreen";
 import { NavPlainButton } from "../components/NavBar";
 import { EmptyState } from "../components/EmptyState";
@@ -7,7 +8,8 @@ import { t } from "../strings";
 import { toneBg, toneFg, haptic, Tone } from "../tokens";
 import { notifications as seed, NotificationItem } from "../mockData";
 import { useUI } from "../ui";
-const ICONS: Record<NotificationItem['icon'], BoxIcon> = {
+
+const ICONS: Record<NotificationItem['icon'], LucideIcon> = {
   UserX: UserXIcon,
   Wallet: WalletIcon,
   FileCheck2: FileCheck2Icon,

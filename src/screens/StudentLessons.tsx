@@ -41,7 +41,7 @@ export function StudentLessons({ scrollSignal }: {scrollSignal: number;}) {
           label="Filtr"
           onClick={() => {
             haptic('light');
-            toast(t.filterToast ?? 'Filtrlar: Barcha modullar', 'info');
+            toast('Filtrlar: Barcha modullar', 'info');
           }}
         >
           <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-slate-100 text-slate-700 transition-colors hover:bg-slate-200 dark:bg-slate-800 dark:text-slate-200">

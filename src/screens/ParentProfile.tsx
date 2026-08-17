@@ -53,7 +53,7 @@ export function ParentProfile({ scrollSignal }: { scrollSignal: number }) {
             >
               <div className="relative rounded-full ring-2 ring-blue-500/30">
                 <span key={avatarVersion} className="rise-in block">
-                  <Avatar name={parent.name} seed={PARENT_AVATAR_SEED} size={88} />
+                  <Avatar name={parent.name} seed={PARENT_AVATAR_SEED} size={96} />
                 </span>
               </div>
 

@@ -1,27 +1,35 @@
 import React from "react";
-import { ChevronRightIcon, BoxIcon } from "lucide-react";
+import { ChevronRightIcon } from "lucide-react";
+import type { LucideIcon } from "lucide-react";
+
 interface ListGroupProps {
   header?: string;
   footer?: string;
   children: React.ReactNode;
   className?: string;
 }
+
 export function ListGroup({
   header,
   footer,
   children,
   className
 }: ListGroupProps) {
-  return <section className={['px-4', className ?? ''].join(' ')}>
-      {header && <h2 className="mb-2 px-1 font-sans text-section font-semibold uppercase text-mutedfg">
+  return (
+    <section className={['px-4', className ?? ''].join(' ')}>
+      {header && (
+        <h2 className="mb-2 px-1 font-sans text-section font-semibold uppercase text-mutedfg">
           {header}
-        </h2>}
+        </h2>
+      )}
       <div className="overflow-hidden rounded-card border border-cardborder bg-card">{children}</div>
       {footer && <p className="mt-2 px-1 font-sans text-footnote text-mutedfg">{footer}</p>}
-    </section>;
+    </section>
+  );
 }
+
 interface ListRowProps {
-  icon?: BoxIcon;
+  icon?: LucideIcon;
   iconTone?: string;
   label: React.ReactNode;
   secondary?: React.ReactNode;
