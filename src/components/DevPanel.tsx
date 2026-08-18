@@ -3,6 +3,7 @@ import { Settings2Icon, XIcon } from 'lucide-react';
 import { t } from '../strings';
 import type { DataState, Role } from '../ui';
 import { GAMES_ENABLED } from '../config';
+import { LEVEL_SEQUENCE, type AcademicLevelCode } from '../types/levelIdentity';
 
 interface DevPanelProps {
   dark: boolean;
@@ -15,6 +16,9 @@ interface DevPanelProps {
   setGameLocked: (v: boolean) => void;
   failNext: boolean;
   setFailNext: (v: boolean) => void;
+  /** Prototype-only: the level normally comes from the CRM, never the student. */
+  studentLevel: AcademicLevelCode;
+  setStudentLevel: (l: AcademicLevelCode) => void;
   onRestart: () => void;
 }
 
@@ -30,6 +34,8 @@ export function DevPanel({
   setGameLocked,
   failNext,
   setFailNext,
+  studentLevel,
+  setStudentLevel,
   onRestart
 }: DevPanelProps) {
   const [open, setOpen] = useState(false);
@@ -124,13 +130,34 @@ export function DevPanel({
         </div>
       </div>
 
+      <div className="mt-3">
+        <p className="mb-1 text-neutral-500">level (CRM)</p>
+        <div className="grid grid-cols-5 gap-1">
+          {LEVEL_SEQUENCE.map((level) => (
+            <button
+              key={level.code}
+              type="button"
+              onClick={() => setStudentLevel(level.code)}
+              className={[
+                'rounded px-1 py-[4px] text-center',
+                studentLevel === level.code
+                  ? 'bg-neutral-100 text-neutral-900'
+                  : 'bg-neutral-800 hover:bg-neutral-700'
+              ].join(' ')}
+            >
+              {level.code}
+            </button>
+          ))}
+        </div>
+      </div>
+
       <label className="mt-3 flex items-center gap-2">
         <input
           type="checkbox"
           checked={failNext}
           onChange={(e) => setFailNext(e.target.checked)}
           className="accent-neutral-200" />
-        
+
         <span>fail sign-in</span>
       </label>
 

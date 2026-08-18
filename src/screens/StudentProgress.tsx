@@ -3,7 +3,6 @@ import { ScrollScreen } from '../components/ScrollScreen';
 import { ScreenSkeleton } from '../components/Skeleton';
 import { ErrorState } from '../components/ErrorState';
 import { AcademicPassportView } from '../components/AcademicPassportView';
-import { ExamsSection } from '../components/ProgressSections';
 import { t } from '../strings';
 import { student } from '../mockData';
 import { useUI } from '../ui';
@@ -27,8 +26,9 @@ export function StudentProgress({ scrollSignal }: { scrollSignal: number }) {
         <ErrorState onRetry={() => undefined} />
       ) : (
         <div className="space-y-5 pb-16">
+          {/* Exam scores now live inside the goal ladder rows, so the
+              separate exams list is gone. */}
           {!empty && <AcademicPassportView child={student} isParent={false} />}
-          <ExamsSection exams={empty ? [] : student.exams} />
         </div>
       )}
     </ScrollScreen>

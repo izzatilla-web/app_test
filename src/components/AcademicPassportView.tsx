@@ -1,15 +1,15 @@
 import React, { useState } from 'react';
-import { ChevronRightIcon, ChevronDownIcon } from 'lucide-react';
+import { ChevronDownIcon } from 'lucide-react';
 import { haptic, ASSETS_3D } from '../tokens';
 import { t } from '../strings';
 import { calculatePassport } from '../passport';
 import type { AcademicPassport } from '../passport';
 import type { ChildRecord } from '../mockData';
 import { useUI } from '../ui';
-import { LevelDetail } from '../screens/LevelDetail';
-import { NewBookingSheet } from '../screens/NewBookingSheet';
 import { curriculumFor } from '../curriculum';
-import type { CurriculumLevel } from '../curriculum';
+import type { CurriculumModule } from '../curriculum';
+import { moduleExam } from '../access';
+import { resolveLevelMeta } from '../types/levelIdentity';
 import { CollapsibleLevelBands } from './CollapsibleLevelBands';
 
 interface AcademicPassportViewProps {
@@ -21,90 +21,97 @@ export function AcademicPassportView({ child, isParent = false }: AcademicPasspo
   const ui = useUI();
   const passport: AcademicPassport = calculatePassport(child);
   const levels = curriculumFor(child.id);
-  const [ladderExpanded, setLadderExpanded] = useState<boolean>(false);
 
-  // Simulator tabs: 'standard', 'attendance', 'intensive'
-  const [simMode, setSimMode] = useState<'standard' | 'attendance' | 'intensive'>('standard');
+  /* One card owns the goal: tapping it opens the detailed ladder (the old
+     standalone "O‘quv narvoni" card duplicated this job and was removed). */
+  const [goalExpanded, setGoalExpanded] = useState<boolean>(false);
 
-  function openLevel(level: CurriculumLevel) {
-    haptic('light');
-    ui.push({
-      key: `level-${level.id}`,
-      backTitle: t.tabProgress,
-      node: <LevelDetail child={child} levelId={level.id} />
-    });
+  /* Equal-interval ruler — 5 milestones (A1 · A2 · B1 · B2 · goal) at equal
+     spacing, 4 equal segments between them. The cursor travels inside its
+     segment proportionally to real topic progress, so its movement is always
+     orderly and the tick geometry never drifts. */
+  const goalSequence = resolveLevelMeta(passport.goal.requiredLevelCode).sequence;
+  const scopedLevels = levels.filter(
+    (lvl) => resolveLevelMeta(lvl.code).sequence <= goalSequence
+  );
+
+  const milestoneCodes = ['A1', 'A2', 'B1', 'B2', passport.goal.requiredLevelCode];
+  const milestoneSeqs = milestoneCodes.map((code) => resolveLevelMeta(code).sequence);
+  const segmentCount = milestoneSeqs.length - 1;
+
+  let cursorPercent = 100;
+  for (let i = 0; i < segmentCount; i += 1) {
+    const from = milestoneSeqs[i];
+    // The last segment includes the goal level's own topics.
+    const to = i === segmentCount - 1 ? milestoneSeqs[i + 1] + 1 : milestoneSeqs[i + 1];
+    const topics = scopedLevels
+      .filter((lvl) => {
+        const seq = resolveLevelMeta(lvl.code).sequence;
+        return seq >= from && seq < to;
+      })
+      .flatMap((lvl) => lvl.modules.flatMap((m) => m.topics));
+    const done = topics.filter((topic) => topic.studied).length;
+    if (topics.length > 0 && done < topics.length) {
+      cursorPercent = Math.round(((i + done / topics.length) / segmentCount) * 1000) / 10;
+      break;
+    }
   }
-
-  function openBookingForWeakPoint(topic: string) {
-    haptic('light');
-    ui.openSheet({
-      key: 'new-booking-weakpoint',
-      detent: 'large',
-      node: <NewBookingSheet initialPurpose={`${topic} — ${t.supportHeader.toLowerCase()}`} />
-    });
-  }
-
-  // Dynamically compute mathematical level start positions for ruler accuracy
-  const totalTopics = passport.now.topicsTotal > 0 ? passport.now.topicsTotal : 72;
-  let cumTopics = 0;
-  const levelMilestones: { code: string; percent: number }[] = [];
-
-  levels.forEach((lvl, idx) => {
-    const startTopics = cumTopics;
-    const count = lvl.modules.reduce((sum, m) => sum + m.topics.length, 0);
-    cumTopics += count;
-    const percent = Math.round((startTopics / totalTopics) * 100);
-    levelMilestones.push({
-      code: lvl.code,
-      percent: idx === 0 ? 0 : percent
-    });
-  });
 
   // Current level code for floating pin
   const currentLevelCode = passport.ladder.find((s) => s.state === 'current')?.code || child.level;
 
-  const simData = {
-    standard: {
-      schedule: t.pgTab3Lessons,
-      attendanceRate: 88,
-      attendanceText: t.pgAttendanceRate(88),
-      forecastDate: passport.forecast.forecastDateFormatted,
-      isLate: true,
-      badgeText: t.pgDelayMonths(8),
-      deltaMonths: '8 oy',
-      progressPercent: 70,
-      gainText: null,
-      tip: isParent ? t.pgTipStandardParent : t.pgTipStandardStudent
-    },
-    attendance: {
-      schedule: t.pgTab3Lessons,
-      attendanceRate: 90,
-      attendanceText: t.pgAttendanceRate(90),
-      forecastDate: '2027-oktabr',
-      isLate: true,
-      badgeText: t.pgDelayMonths(4),
-      deltaMonths: '4 oy',
-      progressPercent: 62,
-      gainText: t.pgSavedMonths(4),
-      tip: isParent ? t.pgTipAttParent : t.pgTipAttStudent
-    },
-    intensive: {
-      schedule: t.pgTabIntensive,
-      attendanceRate: 95,
-      attendanceText: t.pgAttendanceRate(95),
-      forecastDate: '2027-may',
-      isLate: false,
-      badgeText: t.pgOnTimeAhead,
-      deltaMonths: '1 oy oldin',
-      progressPercent: 54,
-      gainText: t.pgGoalFullReach,
-      tip: isParent ? t.pgTipIntParent : t.pgTipIntStudent
-    }
-  }[simMode];
+  /* Real exam score per rung — the rung code is the module code, and the
+     score comes from the child's genuine exam records. */
+  const modulesByCode = new Map<string, CurriculumModule>();
+  levels.forEach((lvl) => lvl.modules.forEach((m) => modulesByCode.set(m.code, m)));
+
+  function rungScore(code: string): number | null {
+    const module = modulesByCode.get(code);
+    if (!module) return null;
+    return moduleExam(module, child)?.score ?? null;
+  }
+
+  // Single real forecast — no simulated scenarios.
+  const { forecast, pace } = passport;
+  const isLate = forecast.verdict === 'behind';
+  const verdictColor = isLate
+    ? 'text-rose-600 dark:text-rose-400'
+    : forecast.verdict === 'tight'
+    ? 'text-amber-600 dark:text-amber-400'
+    : 'text-emerald-600 dark:text-emerald-400';
+
+  /* Status aura — the card border breathes in the verdict color:
+     late = neon rose, tight = amber, on track = emerald. */
+  const verdictRgb = isLate
+    ? '244 63 94'
+    : forecast.verdict === 'tight'
+    ? '245 158 11'
+    : '16 185 129';
+  const auraStyle = {
+    borderColor: `rgb(${verdictRgb} / ${ui.dark ? 0.55 : 0.45})`,
+    '--va-soft': `rgb(${verdictRgb} / ${ui.dark ? 0.16 : 0.1})`,
+    '--va-mid': `rgb(${verdictRgb} / ${ui.dark ? 0.28 : 0.18})`,
+    '--va-strong': `rgb(${verdictRgb} / ${ui.dark ? 0.4 : 0.26})`
+  } as React.CSSProperties;
+
+  /* Production copy — one calm sentence about the outcome, one about the
+     next step. No arrows, no jargon. */
+  const lateMonths = Math.max(1, Math.abs(forecast.deltaMonths));
+  const verdictMessage = isLate
+    ? isParent
+      ? `O‘qish rejadagidan ${lateMonths} oy kechroq tugashi mumkin. Muntazam davomat bu farqni qisqartiradi.`
+      : `O‘qish rejadagidan ${lateMonths} oy kechroq tugashi mumkin. Darslarni qoldirmasang, bu farqni qoplab bo‘ladi.`
+    : forecast.verdict === 'tight'
+    ? isParent
+      ? 'Maqsadga o‘z vaqtida yetib boradi — hozirgi sur‘atni saqlash muhim.'
+      : 'Ayni vaqtida yetib borasan — har bir dars muhim, sur‘atni saqla!'
+    : isParent
+    ? 'Hammasi rejaga muvofiq — maqsadga o‘z vaqtida yetib boradi.'
+    : 'Ajoyib ketyapsan! Shu sur‘atda maqsadga o‘z vaqtida yetasan.';
 
   // SVG Circular Gauge calculations
   const circumference = 2 * Math.PI * 38; // r = 38 => ~238.76
-  const strokeDashoffset = circumference * (1 - simData.attendanceRate / 100);
+  const strokeDashoffset = circumference * (1 - pace.attendanceRate / 100);
 
   return (
     <div className="space-y-5 px-4 pb-1 pt-1">
@@ -176,7 +183,13 @@ export function AcademicPassportView({ child, isParent = false }: AcademicPasspo
           </span>
         </div>
 
-        <div className="rounded-3xl border border-slate-200/90 bg-white p-5 sm:p-6 shadow-sm dark:border-slate-800/90 dark:bg-slate-900 space-y-4">
+        <div
+          onClick={() => {
+            haptic('light');
+            setGoalExpanded((prev) => !prev);
+          }}
+          className="cursor-pointer space-y-4 rounded-3xl border border-slate-200/90 bg-white p-5 shadow-sm transition-colors hover:border-slate-300 dark:border-slate-800/90 dark:bg-slate-900 dark:hover:border-slate-700 sm:p-6"
+        >
           <div className="flex items-start justify-between gap-3">
             <div className="min-w-0">
               <h4 className="truncate font-sans text-sm font-bold text-foreground">
@@ -186,103 +199,134 @@ export function AcademicPassportView({ child, isParent = false }: AcademicPasspo
                 {t.pgRequiredLevel(passport.goal.requiredLevelCode, passport.goal.targetDateFormatted)}
               </p>
             </div>
-            <div className="shrink-0 text-right">
+            <div className="flex shrink-0 items-center gap-1.5">
               <p className="font-display text-2xl font-black tabular-nums leading-none text-foreground">
                 {passport.now.percent}%
               </p>
+              <ChevronDownIcon
+                size={16}
+                className={[
+                  'text-slate-400 transition-transform duration-200',
+                  goalExpanded ? 'rotate-180' : ''
+                ].join(' ')}
+              />
             </div>
           </div>
 
-          {/* Interactive Ruler Progress Track with Blinking Cursor & Floating Level Pin */}
-          <div className="relative pt-7 pb-2 select-none">
-            {/* Floating Level Badge + Blinking Typing Cursor Indicator */}
+          {/* Equal-interval ruler: clean pin, one filled track, 5 aligned ticks */}
+          <div className="relative select-none pb-2 pt-7">
+            {/* Floating level pin — a pill and a short stem, nothing more */}
             <div
               className="absolute top-0 z-20 flex flex-col items-center transition-all duration-700 ease-out"
-              style={{ left: `${passport.now.percent}%`, transform: 'translateX(-50%)' }}
+              style={{ left: `${cursorPercent}%`, transform: 'translateX(-50%)' }}
             >
-              {/* Floating Level Capsule — Level Name Only */}
               <div className="flex items-center rounded-full bg-blue-600 px-2.5 py-0.5 font-sans text-[10px] font-bold text-white shadow-sm">
                 <span>{currentLevelCode}</span>
               </div>
-              {/* Downward Caret */}
-              <div className="h-1 w-1.5 border-l-2 border-r-2 border-t-2 border-l-transparent border-r-transparent border-t-blue-600" />
-              {/* Glowing Blinking Cursor '|' */}
-              <div className="h-4 w-0.5 rounded-full bg-blue-600 animate-pulse dark:bg-blue-400 shadow-[0_0_6px_rgba(59,130,246,0.8)]" />
+              <div className="h-2.5 w-[2px] rounded-full bg-blue-600 dark:bg-blue-400" />
             </div>
 
-            {/* Progress Track & Mathematically Aligned Level Ticks */}
+            {/* Track — the fill always meets the pin */}
             <div className="relative h-3 w-full overflow-hidden rounded-full bg-slate-100 dark:bg-slate-800">
-              {/* Filled Neon Bar */}
               <div
                 className="neon-progress-bar h-full rounded-full transition-all duration-700 ease-out"
-                style={{ width: `${passport.now.percent}%` }}
+                style={{ width: `${cursorPercent}%` }}
               />
-
-              {/* Dynamic Level Boundary Ticks */}
-              <div className="pointer-events-none absolute inset-0">
-                {levelMilestones.map((m) => (
-                  m.percent > 0 && m.percent < 100 && (
-                    <div
-                      key={m.code}
-                      style={{ left: `${m.percent}%` }}
-                      className="absolute top-0 bottom-0 w-0.5 -translate-x-1/2 bg-slate-300 dark:bg-slate-700"
-                    />
-                  )
-                ))}
-              </div>
             </div>
 
-            {/* Mathematically Positioned Milestone Labels */}
-            <div className="relative mt-2.5 h-4 w-full">
-              {/* A1 (0%) */}
-              <button
-                type="button"
-                onClick={() => haptic('light')}
-                className="absolute left-0 text-[11px] font-semibold text-mutedfg hover:text-foreground transition-colors"
-              >
-                A1
-              </button>
+            {/* Exactly 5 ruler ticks at equal intervals */}
+            <div className="relative mt-1.5 h-1.5 w-full">
+              {[0, 25, 50, 75, 100].map((p) => (
+                <span
+                  key={p}
+                  style={{ left: `${p}%` }}
+                  className={[
+                    'absolute top-0 h-full w-[2px] rounded-full bg-slate-300 dark:bg-slate-600',
+                    p === 0 ? '' : p === 100 ? '-translate-x-full' : '-translate-x-1/2'
+                  ].join(' ')}
+                />
+              ))}
+            </div>
 
-              {/* A2 (at start of A2: 21%) */}
-              <button
-                type="button"
-                onClick={() => haptic('light')}
-                style={{ left: `${levelMilestones[1]?.percent || 21}%`, transform: 'translateX(-50%)' }}
-                className="absolute text-[11px] font-semibold text-mutedfg hover:text-foreground transition-colors"
-              >
-                A2
-              </button>
-
-              {/* B1 (at start of B1: 40%) */}
-              <button
-                type="button"
-                onClick={() => haptic('light')}
-                style={{ left: `${levelMilestones[3]?.percent || 40}%`, transform: 'translateX(-50%)' }}
-                className="absolute text-[11px] font-semibold text-mutedfg hover:text-foreground transition-colors"
-              >
-                B1
-              </button>
-
-              {/* B2 (at start of B2: 49%) */}
-              <button
-                type="button"
-                onClick={() => haptic('light')}
-                style={{ left: `${levelMilestones[4]?.percent || 49}%`, transform: 'translateX(-50%)' }}
-                className="absolute text-[11px] font-semibold text-mutedfg hover:text-foreground transition-colors"
-              >
-                B2
-              </button>
-
-              {/* C-DTM (Goal Target: 100%) */}
-              <button
-                type="button"
-                onClick={() => haptic('light')}
-                className="absolute right-0 text-[11px] font-bold text-foreground hover:text-primary transition-colors"
-              >
-                {passport.goal.requiredLevelCode}
-              </button>
+            {/* Milestone labels, aligned with the ticks */}
+            <div className="relative mt-1 h-4 w-full">
+              {milestoneCodes.map((code, index) => {
+                const position = (index / segmentCount) * 100;
+                const isGoal = index === milestoneCodes.length - 1;
+                return (
+                  <span
+                    key={code}
+                    style={
+                      index === 0
+                        ? undefined
+                        : isGoal
+                        ? undefined
+                        : { left: `${position}%`, transform: 'translateX(-50%)' }
+                    }
+                    className={[
+                      'absolute text-[11px]',
+                      index === 0 ? 'left-0' : '',
+                      isGoal ? 'right-0 font-bold text-foreground' : 'font-semibold text-mutedfg'
+                    ].join(' ')}
+                  >
+                    {code}
+                  </span>
+                );
+              })}
             </div>
           </div>
+
+          {/* Detailed ladder — opens on tap; every completed rung shows its
+              real exam score, so a separate exams list is unnecessary. */}
+          {goalExpanded && (
+            <div className="accordion-in space-y-3 border-t border-slate-100 pt-3 dark:border-slate-800">
+              <div className="flex items-center justify-between font-sans text-xs font-semibold text-mutedfg">
+                <span>{t.pgCurrentStage(`${passport.now.levelCode} ${passport.now.levelTitle}`)}</span>
+                <span>{t.pgTargetStage(passport.goal.requiredLevelCode)}</span>
+              </div>
+
+              <div className="no-scrollbar max-h-72 space-y-1.5 overflow-y-auto">
+                {passport.ladder.map((step) => {
+                  const score = step.state === 'completed' ? rungScore(step.code) : null;
+                  return (
+                    <div
+                      key={step.sequence}
+                      className={[
+                        'flex items-center justify-between gap-3 rounded-xl px-3 py-2 font-sans text-xs',
+                        step.state === 'current'
+                          ? 'bg-blue-50 font-bold text-blue-700 dark:bg-blue-950/40 dark:text-blue-300'
+                          : step.state === 'completed'
+                          ? 'bg-emerald-50/80 text-emerald-800 dark:bg-emerald-950/30 dark:text-emerald-300'
+                          : step.state === 'goal'
+                          ? 'font-semibold text-amber-700 dark:text-amber-400'
+                          : 'text-slate-400 dark:text-slate-500'
+                      ].join(' ')}
+                    >
+                      <span className="min-w-0 truncate">
+                        {step.sequence}. {step.code} — {step.title}
+                      </span>
+                      <span
+                        className={[
+                          'shrink-0 tabular-nums',
+                          step.state === 'completed' ? 'font-bold' : ''
+                        ].join(' ')}
+                      >
+                        {step.state === 'completed'
+                          ? score !== null
+                            ? t.pgBall(score)
+                            : t.pgStepCompleted
+                          : step.state === 'current'
+                          ? t.pgStepCurrent
+                          : step.state === 'goal'
+                          ? t.pgStepGoal
+                          : t.pgStepPending}
+                      </span>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          )}
         </div>
       </section>
 
@@ -292,67 +336,14 @@ export function AcademicPassportView({ child, isParent = false }: AcademicPasspo
           <h3 className="font-sans text-xs font-bold uppercase tracking-wider text-mutedfg">
             {t.pgGraduationForecast}
           </h3>
-          {simData.gainText && (
-            <span className="font-sans text-xs font-bold text-emerald-600 dark:text-emerald-400">
-              {simData.gainText}
-            </span>
-          )}
         </div>
 
-        <div className="rounded-3xl border border-slate-200/90 bg-white p-5 sm:p-6 shadow-sm dark:border-slate-800/90 dark:bg-slate-900 space-y-4.5">
-          {/* Interactive Mode Action Pills — Minimal 1-line Apple buttons */}
-          <div className="grid grid-cols-3 gap-1.5 rounded-2xl bg-slate-100 p-1 dark:bg-slate-800">
-            <button
-              type="button"
-              onClick={() => {
-                haptic('light');
-                setSimMode('standard');
-              }}
-              className={[
-                'rounded-xl py-2 px-1 text-center font-sans text-xs font-bold transition-all',
-                simMode === 'standard'
-                  ? 'bg-white text-foreground shadow-xs dark:bg-slate-900 dark:text-white'
-                  : 'text-mutedfg hover:text-foreground'
-              ].join(' ')}
-            >
-              {t.pgModeStandard}
-            </button>
-
-            <button
-              type="button"
-              onClick={() => {
-                haptic('light');
-                setSimMode('attendance');
-              }}
-              className={[
-                'rounded-xl py-2 px-1 text-center font-sans text-xs font-bold transition-all',
-                simMode === 'attendance'
-                  ? 'bg-white text-blue-600 shadow-xs dark:bg-slate-900 dark:text-blue-400'
-                  : 'text-mutedfg hover:text-foreground'
-              ].join(' ')}
-            >
-              {t.pgModeAttendance}
-            </button>
-
-            <button
-              type="button"
-              onClick={() => {
-                haptic('light');
-                setSimMode('intensive');
-              }}
-              className={[
-                'rounded-xl py-2 px-1 text-center font-sans text-xs font-bold transition-all',
-                simMode === 'intensive'
-                  ? 'bg-white text-emerald-600 shadow-xs dark:bg-slate-900 dark:text-emerald-400'
-                  : 'text-mutedfg hover:text-foreground'
-              ].join(' ')}
-            >
-              {t.pgModeIntensive}
-            </button>
-          </div>
-
-          {/* Middle Row: Animated Circular Progress Ring + Key Milestone (With Generous pt-4 pb-2 padding) */}
-          <div className="flex items-center justify-between gap-4 pt-4 pb-2">
+        <div
+          className="verdict-aura space-y-4 rounded-3xl border bg-white p-5 shadow-sm dark:bg-slate-900 sm:p-6"
+          style={auraStyle}
+        >
+          {/* One real answer: with the current pace, when does study finish? */}
+          <div className="flex items-center justify-between gap-4 pb-1">
             {/* SVG Circular Ring Chart */}
             <div className="relative flex shrink-0 items-center justify-center">
               <svg width="84" height="84" viewBox="0 0 88 88" className="-rotate-90">
@@ -385,7 +376,7 @@ export function AcademicPassportView({ child, isParent = false }: AcademicPasspo
                   fill="none"
                   strokeWidth="8"
                   strokeLinecap="round"
-                  stroke={simData.isLate ? 'url(#ringNeonBlue)' : 'url(#ringNeonEmerald)'}
+                  stroke={isLate ? 'url(#ringNeonBlue)' : 'url(#ringNeonEmerald)'}
                   strokeDasharray={circumference}
                   strokeDashoffset={strokeDashoffset}
                   className="transition-all duration-700 ease-out"
@@ -395,7 +386,7 @@ export function AcademicPassportView({ child, isParent = false }: AcademicPasspo
               {/* Text Inside Circular Ring */}
               <div className="absolute inset-0 flex flex-col items-center justify-center text-center">
                 <span className="font-display text-base font-black tabular-nums leading-none text-foreground">
-                  {simData.attendanceRate}%
+                  {pace.attendanceRate}%
                 </span>
                 <span className="mt-0.5 font-sans text-[9px] font-semibold uppercase tracking-wider text-mutedfg">
                   {t.statAttendance}
@@ -409,226 +400,61 @@ export function AcademicPassportView({ child, isParent = false }: AcademicPasspo
                 <span
                   className={[
                     'inline-flex items-center rounded-full px-2.5 py-0.5 font-sans text-xs font-bold',
-                    simData.isLate
+                    isLate
                       ? 'bg-rose-50 text-rose-600 dark:bg-rose-950/50 dark:text-rose-400'
+                      : forecast.verdict === 'tight'
+                      ? 'bg-amber-50 text-amber-600 dark:bg-amber-950/50 dark:text-amber-400'
                       : 'bg-emerald-50 text-emerald-600 dark:bg-emerald-950/50 dark:text-emerald-400'
                   ].join(' ')}
                 >
-                  {simData.badgeText}
+                  {forecast.verdictText}
                 </span>
               </div>
 
               <p className="font-display text-xl font-extrabold tracking-tight text-foreground sm:text-2xl">
-                {simData.forecastDate}
+                {forecast.forecastDateFormatted}
               </p>
 
               <p className="font-sans text-xs text-mutedfg truncate">
-                {t.pgPlanSchedule(simData.schedule)}
+                {t.pgPlanSchedule(t.pgTab3Lessons)}
               </p>
             </div>
           </div>
 
-          {/* Visual Dual Timeline with Neon Glow */}
-          <div className="space-y-3 pt-2 border-t border-slate-100 dark:border-slate-800">
-            {/* Target Baseline */}
-            <div className="space-y-1">
-              <div className="flex items-center justify-between text-xs">
-                <span className="font-sans font-semibold text-mutedfg">
-                  {t.pgTargetExam}
-                </span>
-                <span className="font-sans font-bold text-foreground">
-                  2027-iyun
-                </span>
-              </div>
-              <div className="relative h-2 w-full overflow-hidden rounded-full bg-slate-100 dark:bg-slate-800">
-                <div className="h-full w-[60%] rounded-full bg-slate-400/70 dark:bg-slate-600" />
-              </div>
+          {/* Completion timeline — study progress toward the finish date */}
+          <div className="space-y-1 border-t border-slate-100 pt-3 dark:border-slate-800">
+            <div className="flex items-center justify-between text-xs">
+              <span className="font-sans font-semibold text-mutedfg">
+                {t.pgCompletionTrack}
+              </span>
+              <span className={['font-sans font-bold tabular-nums', verdictColor].join(' ')}>
+                {forecast.forecastDateFormatted}
+              </span>
             </div>
 
-            {/* Dynamic Forecast Track — Clean without duplicate badge text */}
-            <div className="space-y-1">
-              <div className="flex items-center justify-between text-xs">
-                <span className="font-sans font-semibold text-mutedfg">
-                  {t.pgCompletionTrack}
-                </span>
-                <span
-                  className={[
-                    'font-sans font-bold tabular-nums',
-                    simData.isLate ? 'text-rose-600 dark:text-rose-400' : 'text-emerald-600 dark:text-emerald-400'
-                  ].join(' ')}
-                >
-                  {simData.forecastDate}
-                </span>
-              </div>
-
-              {/* Animated Glowing Progress Bar */}
-              <div className="relative h-2.5 w-full overflow-hidden rounded-full bg-slate-100 dark:bg-slate-800">
-                <div
-                  className={[
-                    'h-full rounded-full transition-all duration-500 ease-out',
-                    simData.isLate ? 'neon-progress-rose' : 'neon-progress-emerald'
-                  ].join(' ')}
-                  style={{ width: `${simData.progressPercent}%` }}
-                />
-              </div>
+            <div className="relative h-2 w-full overflow-hidden rounded-full bg-slate-100 dark:bg-slate-800">
+              <div
+                className={[
+                  'h-full rounded-full transition-all duration-500 ease-out',
+                  isLate
+                    ? 'bg-rose-500'
+                    : forecast.verdict === 'tight'
+                    ? 'bg-amber-500'
+                    : 'bg-emerald-500'
+                ].join(' ')}
+                style={{ width: `${passport.now.percent}%` }}
+              />
             </div>
           </div>
 
-          {/* Actionable Humanized Tip Footer */}
-          <p className="font-sans text-xs leading-relaxed text-mutedfg border-t border-slate-100 pt-3 dark:border-slate-800">
-            {simData.tip}
+          {/* Clean production copy — the outcome and the next step */}
+          <p className="border-t border-slate-100 pt-3 font-sans text-xs leading-relaxed text-mutedfg dark:border-slate-800">
+            {verdictMessage}
           </p>
         </div>
       </section>
 
-      {/* ── 4. ALOHIDA KARTA: O'QUV NARVONI (21 POG'ONA) ── */}
-      <section className="space-y-2">
-        <div className="flex items-center justify-between px-1">
-          <h3 className="font-sans text-xs font-bold uppercase tracking-wider text-mutedfg">
-            {t.pgLadderTitle}
-          </h3>
-          <button
-            type="button"
-            onClick={() => setLadderExpanded((prev) => !prev)}
-            className="flex items-center gap-1 font-sans text-xs font-semibold text-primary"
-          >
-            <span>{ladderExpanded ? t.pgCollapse : t.pgExpandAll}</span>
-            <ChevronDownIcon
-              size={14}
-              className={`transition-transform duration-200 ${ladderExpanded ? 'rotate-180' : ''}`}
-            />
-          </button>
-        </div>
-
-        <div className="rounded-3xl border border-slate-200/90 bg-white p-4 shadow-sm dark:border-slate-800/90 dark:bg-slate-900">
-          <div className="flex items-center justify-between text-xs font-semibold text-mutedfg pb-3 border-b border-slate-100 dark:border-slate-800">
-            <span>{t.pgCurrentStage('A2.1 Foizlar')}</span>
-            <span>{t.pgTargetStage('C-DTM (TATU)')}</span>
-          </div>
-
-          {/* Ladder Horizontal Rungs Bar — Clean Apple Nodes with safe py-3 padding */}
-          <div className="flex items-center gap-2 overflow-x-auto py-3 px-1 no-scrollbar">
-            {passport.ladder.map((step) => {
-              const isDone = step.state === 'completed';
-              const isCurrent = step.state === 'current';
-              const isGoal = step.state === 'goal';
-
-              if (isCurrent) {
-                return (
-                  <div
-                    key={step.sequence}
-                    className="flex h-8 shrink-0 items-center justify-center rounded-full bg-blue-600 px-3 font-sans text-xs font-bold text-white shadow-sm ring-4 ring-blue-500/20 dark:ring-blue-400/20"
-                  >
-                    {step.code}
-                  </div>
-                );
-              }
-
-              if (isGoal) {
-                return (
-                  <div
-                    key={step.sequence}
-                    className="flex h-8 shrink-0 items-center justify-center rounded-full bg-gradient-to-r from-amber-400 to-yellow-300 px-3 font-sans text-xs font-bold text-amber-950 shadow-xs"
-                  >
-                    {step.code}
-                  </div>
-                );
-              }
-
-              if (isDone) {
-                return (
-                  <div
-                    key={step.sequence}
-                    className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-emerald-500 font-sans text-[11px] font-bold text-white shadow-xs"
-                  >
-                    {step.code.split('.')[1] || step.code.slice(1)}
-                  </div>
-                );
-              }
-
-              return (
-                <div
-                  key={step.sequence}
-                  className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-slate-100 font-sans text-[11px] font-medium text-slate-400 dark:bg-slate-800 dark:text-slate-500"
-                >
-                  {step.code.split('.')[1] || step.code.slice(1)}
-                </div>
-              );
-            })}
-          </div>
-
-          {ladderExpanded && (
-            <div className="mt-4 pt-3 border-t border-slate-100 dark:border-slate-800 space-y-2 max-h-60 overflow-y-auto no-scrollbar slide-up-fade">
-              {passport.ladder.map((step) => (
-                <div
-                  key={step.sequence}
-                  className={[
-                    'flex items-center justify-between p-2 rounded-xl text-xs font-sans',
-                    step.state === 'current'
-                      ? 'bg-blue-50 font-bold text-blue-700 dark:bg-blue-950/40 dark:text-blue-300'
-                      : step.state === 'completed'
-                      ? 'text-slate-700 dark:text-slate-300'
-                      : 'text-slate-400 dark:text-slate-500'
-                  ].join(' ')}
-                >
-                  <div className="flex items-center gap-2">
-                    <span className="w-5 text-center">{step.sequence}.</span>
-                    <span>{step.code} — {step.title}</span>
-                  </div>
-                  <span>
-                    {step.state === 'completed'
-                      ? t.pgStepCompleted
-                      : step.state === 'current'
-                      ? t.pgStepCurrent
-                      : step.state === 'goal'
-                      ? t.pgStepGoal
-                      : t.pgStepPending}
-                  </span>
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
-      </section>
-
-      {/* ── 5. STUDENT-ONLY: «TUGATISH KERAK» (Weak Points) ── */}
-      {!isParent && child.weakPoints && child.weakPoints.length > 0 && (
-        <section className="space-y-2">
-          <div className="flex items-center justify-between px-1">
-            <h3 className="font-sans text-xs font-bold uppercase tracking-wider text-mutedfg">
-              {t.pgUnfinishedTopics(child.weakPoints.length)}
-            </h3>
-          </div>
-
-          <div className="space-y-2">
-            {child.weakPoints.map((wp) => (
-              <div
-                key={wp.id}
-                className="flex items-center justify-between gap-3 rounded-2xl border border-slate-200/90 bg-white p-3.5 shadow-sm dark:border-slate-800/90 dark:bg-slate-900"
-              >
-                <div className="min-w-0 flex-1">
-                  <p className="truncate font-sans text-sm font-bold text-foreground">
-                    {wp.topic}
-                  </p>
-                  <p className="mt-0.5 font-sans text-xs text-mutedfg italic truncate">
-                    «{wp.note}»
-                  </p>
-                </div>
-
-                <button
-                  type="button"
-                  onClick={() => openBookingForWeakPoint(wp.topic)}
-                  className="shrink-0 inline-flex items-center justify-center rounded-xl bg-primary px-3.5 py-1.5 font-sans text-xs font-bold text-primaryfg shadow-xs transition-all duration-150 active:scale-95"
-                >
-                  {t.pgBookSupport}
-                </button>
-              </div>
-            ))}
-          </div>
-        </section>
-      )}
-
-      {/* ── 6. PARENT-ONLY: KECHIKISH SABABLARI ── */}
+      {/* ── 4. PARENT-ONLY: KECHIKISH SABABLARI ── */}
       {isParent && (
         <section className="space-y-2">
           <div className="flex items-center justify-between px-1">

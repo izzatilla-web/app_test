@@ -13,8 +13,11 @@
  */
 
 import type { ChildRecord } from './mockData';
+import { TODAY } from './mockData';
 import { curriculumFor } from './curriculum';
-import { currentPosition, curriculumProgress } from './access';
+import { currentPosition } from './access';
+import { resolveLevelMeta } from './types/levelIdentity';
+import { t } from './strings';
 
 export type ForecastVerdict = 'on_track' | 'tight' | 'behind';
 
@@ -72,15 +75,6 @@ export interface PassportCauses {
   overrunLessons: number;
 }
 
-export interface WhatIfScenario {
-  id: string;
-  title: string;
-  description: string;
-  newForecastDate: string;
-  savedMonths: number;
-  newVerdict: ForecastVerdict;
-}
-
 export interface PassportSignal {
   code: 'P1' | 'P2' | 'P3' | 'P4' | 'P5' | 'P6' | 'P7' | 'P8';
   severity: 'good' | 'warn' | 'alert';
@@ -104,7 +98,6 @@ export interface AcademicPassport {
   pace: PassportPace;
   forecast: PassportForecast;
   causes: PassportCauses;
-  whatIf: WhatIfScenario[];
   signals: PassportSignal[];
   ladder: RungLadderStep[];
   avgScore: number;
@@ -142,7 +135,6 @@ export const PHOENIX_RUNGS = [
  */
 export function calculatePassport(child: ChildRecord): AcademicPassport {
   const levels = curriculumFor(child.id);
-  const overall = curriculumProgress(levels);
   const position = currentPosition(levels);
 
   // 1. Goal Configuration
@@ -156,35 +148,46 @@ export function calculatePassport(child: ChildRecord): AcademicPassport {
     minScore: 90
   };
 
-  // 2. Current Position
-  const currentRungSeq = 4; // A2.1
-  const totalRungs = 21;
-  const currentRungCode = position?.module.code || 'A2.1';
-  const currentRungTitle = position?.module.title || 'Foizlar';
+  // 2. Current position + goal scope.
+  // Every number below counts only the main path up to the goal level
+  // (A1 → C-DTM). The E (geometry) track is elective and parallel, so it
+  // never inflates the road to the goal.
+  const goalSequence = resolveLevelMeta(goal.requiredLevelCode).sequence;
+  const scopedTopics = levels
+    .filter((level) => resolveLevelMeta(level.code).sequence <= goalSequence)
+    .flatMap((level) => level.modules.flatMap((module) => module.topics));
+  const topicsDone = scopedTopics.filter((topic) => topic.studied).length;
+  const topicsTotal = scopedTopics.length;
+  const percent = topicsTotal > 0 ? Math.round((topicsDone / topicsTotal) * 100) : 0;
+
+  const totalRungs = PHOENIX_RUNGS.length;
+  const currentRung = PHOENIX_RUNGS.find((rung) => rung.code === position?.module.code);
+  const currentRungSeq = currentRung?.sequence ?? 1;
+  const currentRungCode = position?.module.code || PHOENIX_RUNGS[0].code;
+  const currentRungTitle = position?.module.title || PHOENIX_RUNGS[0].title;
 
   const now: PassportNow = {
     levelCode: currentRungCode,
     levelTitle: currentRungTitle,
     levelSequence: currentRungSeq,
     totalLevels: totalRungs,
-    topicsDone: overall.done,
-    topicsTotal: overall.total,
-    percent: overall.percent
+    topicsDone,
+    topicsTotal,
+    percent
   };
 
-  // 3. Remaining Journey
-  const remainingRungs = Math.max(0, totalRungs - currentRungSeq);
-  const remainingTopics = Math.max(0, overall.total - overall.done);
-  // Expected ~3 lessons per topic on average across the school standard
-  const remainingLessons = remainingTopics * 3;
+  // 3. Remaining journey — the centre's real planned lesson count per open
+  // topic, never a per-topic average.
+  const remainingTopicsList = scopedTopics.filter((topic) => !topic.studied);
+  const remainingLessons = remainingTopicsList.reduce((sum, topic) => sum + topic.lessons, 0);
 
   const remaining: PassportRemaining = {
-    levels: remainingRungs,
-    topics: remainingTopics,
+    levels: Math.max(0, totalRungs - currentRungSeq),
+    topics: remainingTopicsList.length,
     lessons: remainingLessons
   };
 
-  // 4. Pace & Effective Speed
+  // 4. Pace & Effective Speed (real attendance record)
   const lessonsPerWeek = 3; // Standard MWF/TTS schedule
   const attendedCount = child.lessons.filter((l) => l.present === 'present' || l.present === 'late').length;
   const rawAttendance = child.lessons.length > 0
@@ -202,24 +205,30 @@ export function calculatePassport(child: ChildRecord): AcademicPassport {
     effectiveLessonsPerWeek
   };
 
-  // 5. Forecast Mathematics
-  // Weeks needed = remainingLessons / (lessonsPerWeek * effectivePace)
+  // 5. Forecast — computed from today's real state, never hardcoded.
+  // One question, one answer: with the current pace, when does the student
+  // arrive? weeks = remaining lessons / effective lessons per week.
   const neededWeeks = Math.ceil(remainingLessons / (lessonsPerWeek * effectivePace));
   const planOnlyWeeks = Math.ceil(remainingLessons / lessonsPerWeek);
   const attendancePenaltyWeeks = Math.max(0, neededWeeks - planOnlyWeeks);
 
-  // Convert weeks to estimated date (assume today = 2026-08-17)
-  // 78 weeks from Aug 2026 => approx Feb 2028
-  const forecastDate = '2028-02-15';
-  const forecastDateFormatted = '2028-fevral';
+  const forecastDay = new Date(`${TODAY}T00:00:00`);
+  forecastDay.setDate(forecastDay.getDate() + neededWeeks * 7);
+  const forecastDate = [
+    forecastDay.getFullYear(),
+    String(forecastDay.getMonth() + 1).padStart(2, '0'),
+    String(forecastDay.getDate()).padStart(2, '0')
+  ].join('-');
+  const forecastDateFormatted = `${forecastDay.getFullYear()}-${t.monthsGen[forecastDay.getMonth()]}`;
 
-  // Target = 2027-06-20 (June 2027) vs Forecast = 2028-02-15 (Feb 2028) => ~8 months late
-  const deltaMonths = -8;
-  const deltaDays = -240;
+  const targetDay = new Date(`${goal.targetDate}T00:00:00`);
+  const deltaDays = Math.round((targetDay.getTime() - forecastDay.getTime()) / 86400000);
+  const deltaMonths = Math.round(deltaDays / 30.44);
+  const lateMonths = Math.max(1, Math.abs(deltaMonths));
 
   let verdict: ForecastVerdict = 'behind';
-  let verdictText = '8 oy kech';
-  let verdictSummary = `Maqsad 2027-iyun → Shu sur'atda 8 oy kech qolasiz`;
+  let verdictText = `${lateMonths} oy kech`;
+  let verdictSummary = `Shu sur'atda o‘qish rejadagidan ${lateMonths} oy kech yakunlanadi`;
 
   if (deltaDays >= 30) {
     verdict = 'on_track';
@@ -244,7 +253,8 @@ export function calculatePassport(child: ChildRecord): AcademicPassport {
     verdictSummary
   };
 
-  // 6. Causes Breakdown (A / B / C)
+  // 6. Causes Breakdown — plan and attendance are real; the topic-overrun
+  // figures stay a documented centre estimate until the CRM exposes them.
   const causes: PassportCauses = {
     planWeeks: planOnlyWeeks,
     planMonths: Math.round((planOnlyWeeks / 4.33) * 10) / 10,
@@ -253,26 +263,6 @@ export function calculatePassport(child: ChildRecord): AcademicPassport {
     overrunWeeks: 4,
     overrunLessons: 11
   };
-
-  // 7. What-If Scenarios (Conditional Forecasting)
-  const whatIf: WhatIfScenario[] = [
-    {
-      id: 'attendance-90',
-      title: 'Davomat 90% ga chiqsa',
-      description: 'Dars qoldirish kamaytirilsa, kechikish 8 oydan 4 oyga tushadi',
-      newForecastDate: '2027-oktabr',
-      savedMonths: 4,
-      newVerdict: 'behind'
-    },
-    {
-      id: 'intensive-schedule',
-      title: 'Haftasiga 4 ta darsga o‘tilsa',
-      description: 'Qo‘shimcha guruh qo‘shilsa, maqsadga 2027-may oyida yetib boriladi',
-      newForecastDate: '2027-may',
-      savedMonths: 9,
-      newVerdict: 'on_track'
-    }
-  ];
 
   // 8. Academic Ladder (21 Rungs)
   const ladder: RungLadderStep[] = PHOENIX_RUNGS.map((rung) => {
@@ -307,19 +297,19 @@ export function calculatePassport(child: ChildRecord): AcademicPassport {
       code: 'P1',
       severity: 'alert',
       title: 'Kechikish xavfi',
-      studentText: 'Shu sur‘atda maqsadga 8 oy kech yetasan. Davomatingni oshir!',
-      parentText: 'Shu sur‘atda maqsadga 8 oy kech qoladi. Asosiy sabab — dars qoldirilishi.'
+      studentText: `Shu sur‘atda maqsadga ${lateMonths} oy kech yetasan. Davomatingni oshir!`,
+      parentText: `Shu sur‘atda maqsadga ${lateMonths} oy kech qoladi. Asosiy sabab — dars qoldirilishi.`
     });
   }
 
   // P2: Attendance < 90%
-  if (attendanceRate < 90) {
+  if (attendanceRate < 90 && attendancePenaltyWeeks > 0) {
     signals.push({
       code: 'P2',
       severity: 'warn',
       title: 'Davomat ko‘rsatkichi',
-      studentText: `Davomating ${attendanceRate}% — kelmagan darslar rejangga 22 hafta qo‘shdi`,
-      parentText: `Davomat ${attendanceRate}% — dars qoldirish o‘qish muddatini 5 oyga uzaytirdi`
+      studentText: `Davomating ${attendanceRate}% — kelmagan darslar rejangga ${attendancePenaltyWeeks} hafta qo‘shdi`,
+      parentText: `Davomat ${attendanceRate}% — dars qoldirish o‘qish muddatini ${causes.attendanceMonths} oyga uzaytirdi`
     });
   }
 
@@ -351,7 +341,6 @@ export function calculatePassport(child: ChildRecord): AcademicPassport {
     pace,
     forecast,
     causes,
-    whatIf,
     signals,
     ladder,
     avgScore,

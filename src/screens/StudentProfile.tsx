@@ -20,9 +20,12 @@ import { t, localeLabel } from '../strings';
 import { student } from '../mockData';
 import { useUI } from '../ui';
 import { haptic } from '../tokens';
+import { useLevelIdentity } from '../useLevelIdentity';
+import { levelGlow } from '../types/levelIdentity';
 
 export function StudentProfile({ scrollSignal }: { scrollSignal: number }) {
   const ui = useUI();
+  const { meta } = useLevelIdentity();
   const fileInputRef = useRef<HTMLInputElement | null>(null);
 
   const [phone, setPhone] = useState(student.phone);
@@ -82,7 +85,12 @@ export function StudentProfile({ scrollSignal }: { scrollSignal: number }) {
               aria-label="Profil rasmini o'zgartirish"
               className="group relative transition-transform duration-150 ease-out active:scale-95"
             >
-              <div className="relative h-20 w-20 overflow-hidden rounded-full ring-2 ring-blue-500/25 bg-slate-100 dark:bg-slate-800 shadow-sm flex items-center justify-center">
+              <div
+                className="relative flex h-20 w-20 items-center justify-center overflow-hidden rounded-full bg-slate-100 shadow-sm transition-shadow duration-500 dark:bg-slate-800"
+                style={{
+                  boxShadow: `0 0 0 2px ${levelGlow(meta, ui.dark ? 0.4 : 0.28)}, 0 0 14px ${levelGlow(meta, ui.dark ? 0.3 : 0.18)}`
+                }}
+              >
                 {customPhoto ? (
                   <img
                     src={customPhoto}

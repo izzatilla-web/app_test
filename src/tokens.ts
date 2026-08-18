@@ -81,6 +81,10 @@ export const ASSETS_3D = {
   levelD: '/assets/3d/level_d.png',
   levelD1: '/assets/3d/level_d1.png',
   levelE: '/assets/3d/level_e.png',
+  matVideo: '/assets/3d/mat_video.png',
+  matPresentation: '/assets/3d/mat_presentation.png',
+  matKonspekt: '/assets/3d/mat_konspekt.png',
+  matQuiz: '/assets/3d/mat_quiz.png',
 };
 
 /**

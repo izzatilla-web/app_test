@@ -18,6 +18,11 @@ interface ScrollScreenProps {
   titleAccessory?: React.ReactNode;
   /** Rendered directly under the large title, scrolls with content. */
   belowTitle?: React.ReactNode;
+  /**
+   * Ambient layer painted behind the whole screen (e.g. the level aura).
+   * Must position itself absolutely and be pointer-events-none.
+   */
+  backdrop?: React.ReactNode;
   /** Signal counter — increment to scroll this screen to the top. */
   scrollToTopSignal?: number;
   offline?: boolean;
@@ -34,6 +39,7 @@ export function ScrollScreen({
   onBack,
   titleAccessory,
   belowTitle,
+  backdrop,
   scrollToTopSignal,
   offline,
   children
@@ -49,7 +55,7 @@ export function ScrollScreen({
     if (!el) return;
     const saved = scrollMemory[scrollKey] ?? 0;
     el.scrollTop = saved;
-    setScrolled(saved > 40);
+    setScrolled(saved > 8);
   }, [scrollKey]);
 
   useEffect(() => {
@@ -61,7 +67,7 @@ export function ScrollScreen({
     const el = ref.current;
     if (!el) return;
     scrollMemory[scrollKey] = el.scrollTop;
-    setScrolled(el.scrollTop > 40);
+    setScrolled(el.scrollTop > 8);
   }
 
   function onPointerDown(e: React.PointerEvent) {
@@ -88,6 +94,8 @@ export function ScrollScreen({
 
   return (
     <div className="relative h-full w-full bg-background">
+      {backdrop}
+
       <NavBar
         title={title}
         showTitle={scrolled}
@@ -125,7 +133,7 @@ export function ScrollScreen({
         onPointerMove={onPointerMove}
         onPointerUp={onPointerUp}
         onPointerCancel={onPointerUp}
-        className="no-scrollbar h-full overflow-y-auto overscroll-contain"
+        className="no-scrollbar relative h-full overflow-y-auto overflow-x-hidden overscroll-contain"
         style={{ paddingTop: offline ? 118 : 88, paddingBottom: 84 }}>
         
         <div style={{ transform: `translateY(${pull}px)`, transition: pull === 0 ? 'transform 250ms cubic-bezier(0.23,1,0.32,1)' : undefined }}>
@@ -170,7 +178,7 @@ export function PushScreen({ title, backTitle, onBack, trailing, children }: Pus
       <div
         ref={ref}
         onScroll={(e) => setScrolled(e.currentTarget.scrollTop > 8)}
-        className="no-scrollbar h-full overflow-y-auto overscroll-contain pb-[60px] pt-[88px]"
+        className="no-scrollbar h-full overflow-y-auto overflow-x-hidden overscroll-contain pb-[60px] pt-[88px]"
       >
         {/* Prominent Screen Title comfortably placed below the Navigation Bar */}
         <div className="px-5 pb-2 pt-2 text-center">

@@ -392,7 +392,7 @@ export function StudentBookings({ scrollSignal }: { scrollSignal: number }) {
                           setSelectedSlotId(null);
                         }}
                         className={[
-                          'flex h-[66px] flex-col items-center justify-center rounded-card border transition-[transform,background-color,border-color] duration-150 ease-out active:scale-[0.97]',
+                          'relative flex h-[66px] flex-col items-center justify-center rounded-card border transition-[transform,background-color,border-color] duration-150 ease-out active:scale-[0.97]',
                           selected
                             ? 'border-primary bg-primary text-primaryfg shadow-sm'
                             : disabled
@@ -417,14 +417,22 @@ export function StudentBookings({ scrollSignal }: { scrollSignal: number }) {
                           {d.date.getDate()}
                         </span>
 
-                        {isCurrentToday && (
+                        {/* Booking indicator dot or today dot */}
+                        {bookings.some((b) => b.date === iso && b.status === 'booked' && !b.cancelledAt) ? (
+                          <span
+                            className={[
+                              'mt-0.5 h-1.5 w-1.5 rounded-full',
+                              selected ? 'bg-white' : 'bg-emerald-500'
+                            ].join(' ')}
+                          />
+                        ) : isCurrentToday ? (
                           <span
                             className={[
                               'mt-0.5 h-1 w-1 rounded-full',
                               selected ? 'bg-white' : 'bg-primary'
                             ].join(' ')}
                           />
-                        )}
+                        ) : null}
                       </button>
                     );
                   })}
@@ -436,6 +444,18 @@ export function StudentBookings({ scrollSignal }: { scrollSignal: number }) {
                   </p>
                 )}
               </section>
+
+              {/* Apple-style same-day booking notice banner */}
+              {selectedDate && bookings.find((b) => b.date === selectedDate && b.status === 'booked' && !b.cancelledAt) && (
+                <div className="flex items-center gap-2.5 rounded-2xl border border-amber-200/80 bg-amber-50/70 p-3.5 text-xs text-amber-900 shadow-2xs dark:border-amber-900/60 dark:bg-amber-950/20 dark:text-amber-200">
+                  <div className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-amber-200/80 text-amber-800 dark:bg-amber-900/80 dark:text-amber-300 font-bold">
+                    !
+                  </div>
+                  <div className="leading-relaxed">
+                    Siz ushbu kunda allaqachon darsga yozilgansiz ({bookings.find((b) => b.date === selectedDate && b.status === 'booked' && !b.cancelledAt)?.time || 'dars mavjud'}).
+                  </div>
+                </div>
+              )}
 
               {/* Time Slots List (Apple Grouped Style) */}
               <section className="space-y-2">
@@ -470,12 +490,18 @@ export function StudentBookings({ scrollSignal }: { scrollSignal: number }) {
                       const isClosed = !!slot.closed;
                       const disabled = isFull || isClosed;
                       const isLast = index === slots.length - 1;
+                      
+                      const bookedBookingOnDate = selectedDate
+                        ? bookings.find((b) => b.date === selectedDate && b.status === 'booked' && !b.cancelledAt)
+                        : null;
+                      const isThisSlotBookedByStudent = bookedBookingOnDate?.timeSlotId === slot.timeSlotId;
+                      const isOtherSlotWhenAlreadyBooked = !!bookedBookingOnDate && !isThisSlotBookedByStudent;
 
                       return (
                         <div
                           key={slot.timeSlotId}
                           onClick={() => {
-                            if (!disabled) {
+                            if (!disabled && !isOtherSlotWhenAlreadyBooked) {
                               haptic('light');
                               setSelectedSlotId(slot.timeSlotId);
                             }
@@ -483,7 +509,7 @@ export function StudentBookings({ scrollSignal }: { scrollSignal: number }) {
                           className={[
                             'flex w-full items-center justify-between gap-3 px-4 py-3 text-left transition-colors',
                             !isLast ? 'border-b border-hairline' : '',
-                            disabled
+                            disabled || isOtherSlotWhenAlreadyBooked
                               ? 'cursor-not-allowed opacity-40'
                               : isSelected
                               ? 'bg-primary/[0.08] cursor-pointer'
@@ -496,7 +522,7 @@ export function StudentBookings({ scrollSignal }: { scrollSignal: number }) {
                                 {slot.startTime}
                                 {slot.endTime ? ` – ${slot.endTime}` : ''}
                               </span>
-                              {isSelected && (
+                              {isSelected && !isThisSlotBookedByStudent && (
                                 <CheckCircle2Icon size={16} className="text-primary" />
                               )}
                             </div>
@@ -519,7 +545,19 @@ export function StudentBookings({ scrollSignal }: { scrollSignal: number }) {
                               {isFull ? t.slotStatusFull : `${slot.count}/${slot.capacity}`}
                             </span>
 
-                            {!disabled && (
+                            {isThisSlotBookedByStudent ? (
+                              <span className="inline-flex h-[32px] items-center gap-1 rounded-lg bg-emerald-50 px-3 font-sans text-footnote font-semibold text-emerald-700 dark:bg-emerald-950/60 dark:text-emerald-300">
+                                <CheckCircle2Icon size={13} /> Yozilgansiz
+                              </span>
+                            ) : isOtherSlotWhenAlreadyBooked ? (
+                              <button
+                                type="button"
+                                disabled
+                                className="inline-flex h-[32px] items-center rounded-lg bg-slate-100 dark:bg-slate-800 px-3 font-sans text-footnote font-semibold text-slate-400 dark:text-slate-500 cursor-not-allowed"
+                              >
+                                Band
+                              </button>
+                            ) : !disabled ? (
                               <button
                                 type="button"
                                 onClick={(e) => {
@@ -530,7 +568,7 @@ export function StudentBookings({ scrollSignal }: { scrollSignal: number }) {
                               >
                                 {t.tabBookings}
                               </button>
-                            )}
+                            ) : null}
                           </div>
                         </div>
                       );
@@ -538,18 +576,6 @@ export function StudentBookings({ scrollSignal }: { scrollSignal: number }) {
                   </div>
                 )}
               </section>
-
-              {/* Bottom Confirm Action if slot is selected */}
-              {selectedSlotId && selectedDate && (
-                <div className="pt-2">
-                  <Button
-                    full
-                    onClick={() => openNewBookingSheet(selectedDate, selectedSlotId)}
-                  >
-                    {t.confirmSession}
-                  </Button>
-                </div>
-              )}
             </div>
           ) : (
             /* ─────────────────────────────────────────────────────────────

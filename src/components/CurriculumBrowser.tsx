@@ -183,15 +183,7 @@ export function CurriculumBrowser({ child }: { child: ChildRecord }) {
 
   return (
     <div className="space-y-3 px-3.5 pb-6 pt-0">
-      {/* ── 1. Top Section: Minimalist Overall Progress Badge ── */}
-      <div className="flex items-center justify-between px-0.5 pt-0 font-sans text-xs font-semibold text-mutedfg">
-        <span>Umumiy o'quv dasturi</span>
-        <span className="rounded-full bg-blue-50 px-2.5 py-0.5 font-sans text-xs font-bold text-blue-600 transition-colors dark:bg-blue-950/80 dark:text-blue-400">
-          {overall.done} / {overall.total} mavzu · {overall.percent}%
-        </span>
-      </div>
-
-      {/* ── 2. Instagram Story-Style Level Avatars with Apple Springs ── */}
+      {/* ── Instagram Story-Style Level Avatars with Apple Springs ── */}
       <div
         ref={storiesScrollRef}
         className="flex items-center gap-4 overflow-x-auto px-1 py-1 no-scrollbar scroll-smooth"

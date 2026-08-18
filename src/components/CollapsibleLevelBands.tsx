@@ -5,14 +5,8 @@ import { haptic } from '../tokens';
 import { useUI } from '../ui';
 import { LevelDetail } from '../screens/LevelDetail';
 import type { ChildRecord } from '../mockData';
-
-const BAND_META: Record<string, { title: string; subtitle: string }> = {
-  A: { title: "Boshlang‘ich va o‘rta matematika", subtitle: "A1, A2, A3 darajalar" },
-  B: { title: "Algebra va Geometriya", subtitle: "B1, B2, B3 darajalar" },
-  C: { title: "DTM & SAT tayyorgarlik", subtitle: "C1, C2, C3 darajalar" },
-  D: { title: "Milliy va xalqaro olimpiada", subtitle: "D1, D2, D3 darajalar" },
-  E: { title: "Oliy matematika & Data Science", subtitle: "E1, E2, E3 darajalar" },
-};
+import { useLevelIdentity } from '../useLevelIdentity';
+import { LEVEL_BANDS, type LevelBandLetter } from '../types/levelIdentity';
 
 interface CollapsibleLevelBandsProps {
   levels: CurriculumLevel[];
@@ -21,12 +15,23 @@ interface CollapsibleLevelBandsProps {
 
 export function CollapsibleLevelBands({ levels, child }: CollapsibleLevelBandsProps) {
   const ui = useUI();
+  const { meta } = useLevelIdentity();
 
-  // Find the current active band for the student (e.g. 'A' from 'A2')
-  const currentBandLetter = useMemo(() => {
-    const letter = child.level ? child.level.charAt(0).toUpperCase() : 'A';
-    return letter;
-  }, [child.level]);
+  // The student's current band (live CRM level identity).
+  const currentBandLetter = meta.band;
+  const currentTier = LEVEL_BANDS[currentBandLetter].tier;
+
+  /**
+   * A band is open to the student when they have reached it on the main
+   * path, when it already holds studied topics, or when it is the parallel
+   * E (Geometriya) track — that one is open to every level.
+   */
+  function isReachable(band: string, doneTopics: number): boolean {
+    if (band === 'E') return true;
+    if (doneTopics > 0) return true;
+    const bandMeta = LEVEL_BANDS[band as LevelBandLetter];
+    return bandMeta ? bandMeta.tier <= currentTier : false;
+  }
 
   // Expanded state map — default the student's active band to true
   const [expandedBands, setExpandedBands] = useState<Record<string, boolean>>(() => ({
@@ -69,12 +74,17 @@ export function CollapsibleLevelBands({ levels, child }: CollapsibleLevelBandsPr
         percent,
         isCompleted,
         isCurrent,
-        meta: BAND_META[band] || { title: `${band} darajalari`, subtitle: `${bandLevels.length} ta daraja` }
+        title: LEVEL_BANDS[band as LevelBandLetter]?.title || `${band} darajalari`
       };
     });
   }, [levels]);
 
-  function toggleBand(band: string) {
+  function toggleBand(band: string, reachable: boolean) {
+    if (!reachable) {
+      haptic('warning');
+      ui.toast('Bu bo‘lim hozircha yopiq — avval joriy darajani yakunlang', 'warning');
+      return;
+    }
     haptic('light');
     setExpandedBands((prev) => ({
       ...prev,
@@ -94,18 +104,28 @@ export function CollapsibleLevelBands({ levels, child }: CollapsibleLevelBandsPr
   return (
     <div className="space-y-2.5">
       {groupedBands.map((item) => {
-        const isOpen = Boolean(expandedBands[item.band]);
+        const reachable = isReachable(item.band, item.doneTopics);
+        const isOpen = reachable && Boolean(expandedBands[item.band]);
 
         return (
           <div
             key={item.band}
-            className="overflow-hidden rounded-2xl border border-slate-200/90 bg-white shadow-sm transition-all duration-200 hover:border-slate-300 dark:border-slate-800/90 dark:bg-slate-900 dark:hover:border-slate-700"
+            className={[
+              'overflow-hidden rounded-2xl border border-slate-200/90 bg-white shadow-sm transition-all duration-200 dark:border-slate-800/90 dark:bg-slate-900',
+              reachable
+                ? 'hover:border-slate-300 dark:hover:border-slate-700'
+                : 'opacity-55'
+            ].join(' ')}
           >
             {/* Band Accordion Header Button */}
             <button
               type="button"
-              onClick={() => toggleBand(item.band)}
-              className="flex w-full flex-col px-4 pt-3.5 pb-4 text-left transition-colors active:bg-slate-50 dark:active:bg-slate-800/50"
+              onClick={() => toggleBand(item.band, reachable)}
+              aria-disabled={!reachable}
+              className={[
+                'flex w-full flex-col px-4 pt-3.5 pb-4 text-left transition-colors',
+                reachable ? 'active:bg-slate-50 dark:active:bg-slate-800/50' : 'cursor-default'
+              ].join(' ')}
             >
               {/* Top Row: Band Code + Title + Toggle Icon */}
               <div className="flex items-start justify-between w-full">
@@ -123,31 +143,39 @@ export function CollapsibleLevelBands({ levels, child }: CollapsibleLevelBandsPr
                     Level {item.band}
                   </span>
                   <span className="truncate font-sans text-sm font-semibold text-foreground">
-                    {item.meta.title}
+                    {item.title}
                   </span>
                 </div>
 
                 <div className="shrink-0 ml-2 flex items-center gap-1.5">
-                  <span
-                    className={[
-                      'font-sans text-xs font-bold tabular-nums',
-                      item.isCompleted
-                        ? 'text-emerald-600 dark:text-emerald-400'
-                        : item.isCurrent
-                        ? 'text-blue-600 dark:text-blue-400'
-                        : 'text-slate-400 dark:text-slate-500'
-                    ].join(' ')}
-                  >
-                    {item.percent}%
-                  </span>
-                  <div
-                    className={[
-                      'flex h-6 w-6 items-center justify-center text-slate-400 transition-transform duration-200',
-                      isOpen ? 'rotate-180 text-foreground' : ''
-                    ].join(' ')}
-                  >
-                    <ChevronDownIcon size={18} />
-                  </div>
+                  {reachable ? (
+                    <>
+                      <span
+                        className={[
+                          'font-sans text-xs font-bold tabular-nums',
+                          item.isCompleted
+                            ? 'text-emerald-600 dark:text-emerald-400'
+                            : item.isCurrent
+                            ? 'text-blue-600 dark:text-blue-400'
+                            : 'text-slate-400 dark:text-slate-500'
+                        ].join(' ')}
+                      >
+                        {item.percent}%
+                      </span>
+                      <div
+                        className={[
+                          'flex h-6 w-6 items-center justify-center text-slate-400 transition-transform duration-200',
+                          isOpen ? 'rotate-180 text-foreground' : ''
+                        ].join(' ')}
+                      >
+                        <ChevronDownIcon size={18} />
+                      </div>
+                    </>
+                  ) : (
+                    <span className="font-sans text-[11px] font-semibold text-mutedfg">
+                      Yopiq
+                    </span>
+                  )}
                 </div>
               </div>
 

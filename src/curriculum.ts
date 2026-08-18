@@ -30,6 +30,42 @@ export interface TopicVideo {
   watched: boolean;
 }
 
+export interface TopicDocumentFile {
+  id: number;
+  title: string;
+  fileName: string;
+  sizeStr: string;
+  fileType: 'pdf' | 'pptx' | 'docx' | 'doc';
+  url?: string;
+  pageCount?: number;
+}
+
+export interface TopicPresentation {
+  title: string;
+  files: TopicDocumentFile[];
+}
+
+export interface TopicKonspekt {
+  title: string;
+  summary: string;
+  formulas: string[];
+  keyPoints: string[];
+}
+
+export interface QuizQuestion {
+  id: number;
+  question: string;
+  options: string[];
+  answerIndex: number;
+  explanation: string;
+}
+
+export interface TopicQuiz {
+  title: string;
+  questionCount: number;
+  questions: QuizQuestion[];
+}
+
 export interface TopicContent {
   /** A topic may carry one or several videos, in teaching order. */
   videos: TopicVideo[];
@@ -38,6 +74,9 @@ export interface TopicContent {
   practice: boolean;
   /** Reuses the platform's homework states; '' means none assigned. */
   homework: Homework;
+  presentation?: TopicPresentation;
+  konspekt?: TopicKonspekt;
+  quiz?: TopicQuiz;
 }
 
 export interface CurriculumTopic {
@@ -503,94 +542,97 @@ const aliLevels: CurriculumLevel[] = [
     { id: 163, title: 'Koshi funksional tenglamasi', studied: false, mastery: null, lessons: 5, content: content([video('Funksional', 940, false)], '') }]
   }]
 },
+/* ── E band — Geometriya (parallel yo‘nalish) ─────────────────────
+   The E track is elective geometry: it can be studied alongside any
+   main-path level (A1..D3), so it sits outside the main progression. */
 {
   id: 13,
   code: 'E1',
-  title: 'Oliy Matematika: Chiziqli Algebra',
+  title: 'Planimetriya',
   modules: [
   {
     id: 131,
     code: 'E1.1',
-    title: 'Matritsalar va Determinantlar',
-    examTopic: 'Oliy Math I',
+    title: 'Uchburchaklar',
+    examTopic: 'Geometriya I',
     topics: [
-    { id: 164, title: 'Matritsa amallari', studied: false, mastery: null, lessons: 4, content: content([video('Matritsalar', 920, false)], '') }]
+    { id: 164, title: 'Uchburchak turlari va burchaklar', studied: false, mastery: null, lessons: 4, content: content([video('Uchburchaklar', 920, false)], '') }]
   },
   {
     id: 132,
     code: 'E1.2',
-    title: 'Vektor fazolari',
+    title: 'Aylana va doira',
     examTopic: null,
     topics: [
-    { id: 165, title: 'Baza va o‘lcham', studied: false, mastery: null, lessons: 4, content: content([video('Vektorlar', 880, false)], '') }]
+    { id: 165, title: 'Aylana, vatar va urinma', studied: false, mastery: null, lessons: 4, content: content([video('Aylana', 880, false)], '') }]
   },
   {
     id: 133,
     code: 'E1.3',
-    title: 'Xos sonlar va xos vektorlar',
+    title: 'Yuzalar',
     examTopic: null,
     topics: [
-    { id: 166, title: 'Eigenvalues & Eigenvectors', studied: false, mastery: null, lessons: 5, content: content([video('Eigenvalues', 960, false)], '') }]
+    { id: 166, title: 'Ko‘pburchaklar yuzasi', studied: false, mastery: null, lessons: 5, content: content([video('Yuzalar', 960, false)], '') }]
   }]
 },
 {
   id: 14,
   code: 'E2',
-  title: 'Differensial Tenglamalar',
+  title: 'Stereometriya',
   modules: [
   {
     id: 141,
     code: 'E2.1',
-    title: 'Birinchi tartibli tenglamalar',
-    examTopic: 'Oliy Math II',
+    title: 'Prizma va parallelepiped',
+    examTopic: 'Geometriya II',
     topics: [
-    { id: 167, title: 'O‘zgaruvchilari ajraladigan tenglamalar', studied: false, mastery: null, lessons: 4, content: content([video('Diff tenglamalar', 900, false)], '') }]
+    { id: 167, title: 'Prizma hajmi va sirti', studied: false, mastery: null, lessons: 4, content: content([video('Prizma', 900, false)], '') }]
   },
   {
     id: 142,
     code: 'E2.2',
-    title: 'Yuqori tartibli chiziqli tenglamalar',
+    title: 'Piramida va konus',
     examTopic: null,
     topics: [
-    { id: 168, title: 'Bir jinsli bo‘lmagan tenglamalar', studied: false, mastery: null, lessons: 5, content: content([video('Yuqori tartibli', 930, false)], '') }]
+    { id: 168, title: 'Piramida hajmi va sirti', studied: false, mastery: null, lessons: 5, content: content([video('Piramida', 930, false)], '') }]
   },
   {
     id: 143,
     code: 'E2.3',
-    title: 'Laplas almashtirishi',
+    title: 'Shar va sfera',
     examTopic: null,
     topics: [
-    { id: 169, title: 'Laplas usuli bilan yechish', studied: false, mastery: null, lessons: 5, content: content([video('Laplas', 980, false)], '') }]
+    { id: 169, title: 'Shar hajmi va sirt yuzasi', studied: false, mastery: null, lessons: 5, content: content([video('Shar', 980, false)], '') }]
   }]
 },
 {
   id: 15,
   code: 'E3',
-  title: 'Ehtimollar Nazariyasi & Data Science',
+  title: 'Analitik geometriya',
   modules: [
   {
     id: 151,
     code: 'E3.1',
-    title: 'Tasodifiy miqdorlar',
-    examTopic: 'Oliy Math III',
+    title: 'Koordinatalar usuli',
+    examTopic: 'Geometriya III',
     topics: [
-    { id: 170, title: 'Taqsimot qonunlari', studied: false, mastery: null, lessons: 4, content: content([video('Ehtimollik', 890, false)], '') }]
+    { id: 170, title: 'Nuqta va kesma koordinatalari', studied: false, mastery: null, lessons: 4, content: content([video('Koordinatalar', 890, false)], '') }]
   },
   {
     id: 152,
     code: 'E3.2',
-    title: 'Matematik statistika',
+    title: 'Vektorlar',
     examTopic: null,
     topics: [
-    { id: 171, title: 'Gipotezalarni tekshirish', studied: false, mastery: null, lessons: 4, content: content([video('Statistika', 910, false)], '') }]
+    { id: 171, title: 'Vektorlar ustida amallar', studied: false, mastery: null, lessons: 4, content: content([video('Vektorlar', 910, false)], '') }]
   },
   {
     id: 153,
     code: 'E3.3',
-    title: 'Amaliy hisoblash algoritmlari',
+    title: 'Geometrik isbotlash',
     examTopic: null,
     topics: [
-    { id: 172, title: 'Gradient tushish va optimallash', studied: false, mastery: null, lessons: 5, content: content([video('Optimallash', 990, false)], '') }]
+    { id: 172, title: 'Isbotlash usullari va masalalar', studied: false, mastery: null, lessons: 5, content: content([video('Isbotlash', 990, false)], '') }]
   }]
 }];
 

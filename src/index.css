@@ -1010,4 +1010,473 @@ body {
   }
 }
 
+/* ── Level identity system ────────────────────────────── */
+/* The level monogram settles in from a soft blur — runs once per level
+   change (the element is remounted with a new key). */
+@keyframes levelMarkIn {
+  from {
+    opacity: 0;
+    transform: translateY(6px) scale(0.96);
+    filter: blur(6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+    filter: blur(0);
+  }
+}
+.level-mark-in {
+  animation: levelMarkIn 520ms cubic-bezier(0.23, 1, 0.32, 1) both;
+}
+
+/* One-shot promotion light travelling across the header aura. */
+@keyframes levelSweep {
+  0% {
+    transform: translateX(-130%) skewX(-14deg);
+    opacity: 0;
+  }
+  12% {
+    opacity: 1;
+  }
+  100% {
+    transform: translateX(260%) skewX(-14deg);
+    opacity: 0;
+  }
+}
+.level-sweep {
+  animation: levelSweep 1100ms cubic-bezier(0.4, 0, 0.2, 1) both;
+}
+
+/* One-shot promotion bloom expanding behind the title. */
+@keyframes levelBloom {
+  0% {
+    transform: translateX(-50%) scale(0.8);
+    opacity: 0;
+  }
+  30% {
+    opacity: 0.9;
+  }
+  100% {
+    transform: translateX(-50%) scale(1.3);
+    opacity: 0;
+  }
+}
+.level-bloom {
+  animation: levelBloom 1000ms cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+/* Aura cross-fade between two level lights. */
+@keyframes auraFadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+.aura-in {
+  animation: auraFadeIn 700ms ease-out both;
+}
+@keyframes auraFadeOut {
+  to {
+    opacity: 0;
+  }
+}
+.aura-out {
+  animation: auraFadeOut 700ms ease-out forwards;
+}
+
+/* Ambient drift for the D/E band light — slow, almost subconscious. */
+@keyframes auraDrift {
+  0%,
+  100% {
+    transform: translateX(-2.5%);
+  }
+  50% {
+    transform: translateX(2.5%);
+  }
+}
+.aura-drift {
+  animation: auraDrift 16s ease-in-out infinite;
+}
+
+/* E-band halo breathing — calm, never flashy. */
+@keyframes haloBreathe {
+  0%,
+  100% {
+    transform: translateX(-50%) scale(1);
+    opacity: var(--halo-a, 0.5);
+  }
+  50% {
+    transform: translateX(-50%) scale(1.05);
+    opacity: calc(var(--halo-a, 0.5) * 1.3);
+  }
+}
+.halo-breathe {
+  animation: haloBreathe 9s ease-in-out infinite;
+}
+
+/* "You are here" beacon on the level distance track. */
+@keyframes levelBeacon {
+  0% {
+    box-shadow: 0 0 0 0 var(--beacon, hsl(221 83% 53% / 0.4));
+  }
+  70%,
+  100% {
+    box-shadow: 0 0 0 6px transparent;
+  }
+}
+.level-beacon {
+  animation: levelBeacon 2.6s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+}
+
+/* ── Level mood scenes ────────────────────────────────── */
+/* A-band monogram hangs from a single nail — tilted, gently swaying.
+   With reduced motion the animation freezes at the 0% frame, so the
+   sign stays tilted (the mood survives) without any movement. */
+/* The sign SLIPS on its nail — real gravity, not a metronome:
+   a long stillness, then a sudden accelerating drop, the nail catches it
+   with two damped bounces, it hangs low for a while, then slowly creeps
+   back up. Reduced motion freezes at the 0% frame (tilted, motionless). */
+@keyframes levelHang {
+  0%,
+  34% {
+    transform: rotate(-3.5deg);
+    animation-timing-function: cubic-bezier(0.65, 0.02, 1, 0.55);
+  }
+  37% {
+    transform: rotate(-9.6deg);
+    animation-timing-function: cubic-bezier(0, 0.55, 0.45, 1);
+  }
+  40% {
+    transform: rotate(-7.1deg);
+    animation-timing-function: cubic-bezier(0.6, 0, 1, 0.5);
+  }
+  43% {
+    transform: rotate(-9.1deg);
+    animation-timing-function: cubic-bezier(0, 0.55, 0.45, 1);
+  }
+  46% {
+    transform: rotate(-8.1deg);
+    animation-timing-function: cubic-bezier(0.6, 0, 1, 0.5);
+  }
+  48.5% {
+    transform: rotate(-8.7deg);
+  }
+  66% {
+    transform: rotate(-8.6deg);
+    animation-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
+  }
+  92%,
+  100% {
+    transform: rotate(-3.5deg);
+  }
+}
+.level-hang {
+  animation: levelHang 8.5s infinite;
+  will-change: transform;
+}
+
+/* Same slip-and-catch physics for loose cards, parametrized:
+   --loose-rest is the resting tilt, --loose-drop the slipped tilt. */
+@keyframes looseSway {
+  0%,
+  30% {
+    transform: rotate(var(--loose-rest, -0.8deg));
+    animation-timing-function: cubic-bezier(0.65, 0.02, 1, 0.55);
+  }
+  33% {
+    transform: rotate(calc(var(--loose-drop, -2deg) * 1.14));
+    animation-timing-function: cubic-bezier(0, 0.55, 0.45, 1);
+  }
+  36% {
+    transform: rotate(calc(var(--loose-drop, -2deg) * 0.76));
+    animation-timing-function: cubic-bezier(0.6, 0, 1, 0.5);
+  }
+  39% {
+    transform: rotate(calc(var(--loose-drop, -2deg) * 1.06));
+    animation-timing-function: cubic-bezier(0, 0.55, 0.45, 1);
+  }
+  42% {
+    transform: rotate(var(--loose-drop, -2deg));
+  }
+  62% {
+    transform: rotate(var(--loose-drop, -2deg));
+    animation-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
+  }
+  90%,
+  100% {
+    transform: rotate(var(--loose-rest, -0.8deg));
+  }
+}
+.level-loose {
+  animation: looseSway var(--loose-t, 9s) infinite;
+  will-change: transform;
+}
+
+/* The little ":(" that lives behind the level sign: hidden most of the
+   cycle, springs up with an overshoot, holds a beat, ducks back down. */
+@keyframes levelPeek {
+  0%,
+  58% {
+    transform: translateY(24px) rotate(-10deg);
+  }
+  66% {
+    transform: translateY(1px) rotate(6deg);
+  }
+  72% {
+    transform: translateY(6px) rotate(-3deg);
+  }
+  77% {
+    transform: translateY(4px) rotate(0deg);
+  }
+  90% {
+    transform: translateY(4px) rotate(0deg);
+  }
+  100% {
+    transform: translateY(24px) rotate(-10deg);
+  }
+}
+.level-peek {
+  animation: levelPeek 7s cubic-bezier(0.34, 1.3, 0.64, 1) infinite;
+  will-change: transform;
+}
+
+/* A-band ember breathing at the bottom edge of the screen. */
+@keyframes levelEmber {
+  0%,
+  100% {
+    opacity: 0.72;
+  }
+  50% {
+    opacity: 1;
+  }
+}
+.level-ember {
+  animation: levelEmber 4.4s ease-in-out infinite;
+}
+
+/* Shared rising particle — sparks (A), momentum lights (B), dust (E).
+   Duration/delay come inline from the component. */
+@keyframes levelParticleRise {
+  0% {
+    transform: translateY(24px);
+    opacity: 0;
+  }
+  16% {
+    opacity: 1;
+  }
+  78% {
+    opacity: 0.55;
+  }
+  100% {
+    transform: translateY(-118px);
+    opacity: 0;
+  }
+}
+.level-particle {
+  animation-name: levelParticleRise;
+  animation-timing-function: linear;
+  animation-iteration-count: infinite;
+  will-change: transform, opacity;
+}
+
+/* D-band star glint — a diamond that flares briefly, then rests. */
+@keyframes levelGlint {
+  0%,
+  24%,
+  100% {
+    opacity: 0;
+    transform: rotate(45deg) scale(0.3);
+  }
+  8% {
+    opacity: 0.9;
+    transform: rotate(45deg) scale(1);
+  }
+  16% {
+    opacity: 0;
+    transform: rotate(45deg) scale(0.45);
+  }
+}
+.level-glint {
+  animation: levelGlint 4.8s ease-in-out infinite;
+  will-change: transform, opacity;
+}
+
+/* C-band orbit — one spark circling the monogram like a satellite. */
+@keyframes levelOrbit {
+  to {
+    transform: rotate(360deg);
+  }
+}
+.level-orbit {
+  animation: levelOrbit 7.5s linear infinite;
+  will-change: transform;
+}
+
+/* B-band paper plane — glides up across the header every cycle,
+   rocking slightly, then sails out: momentum made visible. */
+@keyframes levelPlane {
+  0%,
+  100% {
+    transform: translate(-36px, 96px) rotate(14deg);
+    opacity: 0;
+  }
+  6% {
+    opacity: 0.85;
+  }
+  30% {
+    transform: translate(120px, 52px) rotate(-2deg);
+  }
+  55% {
+    transform: translate(240px, 34px) rotate(6deg);
+    opacity: 0.85;
+  }
+  78% {
+    transform: translate(400px, -16px) rotate(-10deg);
+    opacity: 0;
+  }
+}
+.level-plane {
+  animation: levelPlane 11s cubic-bezier(0.4, 0, 0.3, 1) infinite;
+  will-change: transform, opacity;
+}
+
+/* C-band target lock — a ring contracts onto the monogram and locks. */
+@keyframes levelLock {
+  0%,
+  66% {
+    opacity: 0;
+    transform: translate(-50%, -50%) scale(1.75);
+  }
+  73% {
+    opacity: 0.85;
+    transform: translate(-50%, -50%) scale(1.02);
+  }
+  77% {
+    transform: translate(-50%, -50%) scale(0.95);
+  }
+  81% {
+    opacity: 0.7;
+    transform: translate(-50%, -50%) scale(1);
+  }
+  90%,
+  100% {
+    opacity: 0;
+    transform: translate(-50%, -50%) scale(1);
+  }
+}
+.level-lock {
+  animation: levelLock 8s cubic-bezier(0.22, 1, 0.36, 1) infinite;
+  will-change: transform, opacity;
+}
+
+/* D-band comet — a brief violet streak across the header. */
+@keyframes levelComet {
+  0%,
+  80% {
+    transform: translateX(-110px);
+    opacity: 0;
+  }
+  83% {
+    opacity: 1;
+  }
+  93% {
+    transform: translateX(470px);
+    opacity: 0;
+  }
+  100% {
+    transform: translateX(470px);
+    opacity: 0;
+  }
+}
+.level-comet {
+  animation: levelComet 12s cubic-bezier(0.55, 0, 0.85, 0.5) infinite;
+  will-change: transform, opacity;
+}
+
+/* E-band Euclidean construction — figures draw themselves with a
+   ghost compass (pathLength=100 normalizes every shape), hold, fade. */
+@keyframes levelDraw {
+  0% {
+    stroke-dashoffset: 100;
+    opacity: 0;
+  }
+  5% {
+    opacity: 1;
+  }
+  32% {
+    stroke-dashoffset: 0;
+  }
+  76% {
+    stroke-dashoffset: 0;
+    opacity: 1;
+  }
+  90%,
+  100% {
+    stroke-dashoffset: 0;
+    opacity: 0;
+  }
+}
+.level-draw {
+  stroke-dasharray: 100;
+  animation: levelDraw 12s cubic-bezier(0.4, 0, 0.2, 1) infinite;
+  will-change: stroke-dashoffset, opacity;
+}
+
+/* E-band floating geometry — tiny shape outlines drifting upward. */
+@keyframes levelShapeRise {
+  0% {
+    transform: translateY(34px) rotate(0deg);
+    opacity: 0;
+  }
+  14% {
+    opacity: 0.65;
+  }
+  76% {
+    opacity: 0.3;
+  }
+  100% {
+    transform: translateY(-128px) rotate(80deg);
+    opacity: 0;
+  }
+}
+.level-shape {
+  animation-name: levelShapeRise;
+  animation-timing-function: linear;
+  animation-iteration-count: infinite;
+  will-change: transform, opacity;
+}
+
+/* B-band monogram bob — the properly-mounted sign gently lifts. */
+@keyframes levelBob {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-3px);
+  }
+}
+.level-bob {
+  animation: levelBob 4.8s ease-in-out infinite;
+  will-change: transform;
+}
+
+/* Verdict aura — the forecast card border breathes in its status color
+   (rose = late, amber = tight, emerald = on track). Colors come from the
+   --va-* vars set inline; reduced motion freezes at the calm 0% frame. */
+@keyframes verdictAura {
+  0%,
+  100% {
+    box-shadow: 0 0 10px var(--va-soft, transparent), 0 0 22px var(--va-soft, transparent);
+  }
+  50% {
+    box-shadow: 0 0 14px var(--va-mid, transparent), 0 0 30px var(--va-strong, transparent);
+  }
+}
+.verdict-aura {
+  animation: verdictAura 3.4s ease-in-out infinite;
+}
+
 

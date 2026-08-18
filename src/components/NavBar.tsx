@@ -16,9 +16,9 @@ export function NavBar({ title, showTitle, scrolled, backTitle, onBack, leading,
   return (
     <div
       className={[
-        'absolute inset-x-0 top-0 z-30 h-[88px] transition-[background-color,border-color] duration-200 ease-out',
+        'absolute inset-x-0 top-0 z-30 h-[88px] transition-[background-color,border-color,box-shadow] duration-150 ease-out',
         scrolled
-          ? 'border-b border-hairline bg-background/80 backdrop-blur-xl'
+          ? 'border-b border-hairline/80 bg-background/85 backdrop-blur-2xl shadow-2xs'
           : 'border-b border-transparent bg-transparent'
       ].join(' ')}
     >
@@ -42,16 +42,18 @@ export function NavBar({ title, showTitle, scrolled, backTitle, onBack, leading,
         </div>
 
         {/* Horizontally Centered Title with Safe Clearance Margins */}
-        <div className="pointer-events-none absolute inset-x-0 bottom-0 flex h-[44px] items-center justify-center px-[96px] sm:px-[120px]">
-          <span
-            className={[
-              'truncate font-sans text-[15px] sm:text-[17px] font-semibold text-foreground transition-all duration-200 ease-out',
-              showTitle ? 'translate-y-0 opacity-100' : 'translate-y-1 opacity-0'
-            ].join(' ')}
-          >
-            {title}
-          </span>
-        </div>
+        {!leading && (
+          <div className="pointer-events-none absolute inset-x-0 bottom-0 flex h-[44px] items-center justify-center px-[96px] sm:px-[120px]">
+            <span
+              className={[
+                'truncate font-sans text-[15px] sm:text-[17px] font-semibold text-foreground transition-all duration-200 ease-out',
+                showTitle ? 'translate-y-0 opacity-100' : 'translate-y-1 opacity-0'
+              ].join(' ')}
+            >
+              {title}
+            </span>
+          </div>
+        )}
 
         {/* Right Slot */}
         <div className="z-10 flex h-[44px] min-w-[44px] items-center justify-end gap-1">

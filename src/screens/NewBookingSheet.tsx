@@ -11,10 +11,11 @@ import {
 import { t } from '../strings';
 import { haptic, longDate } from '../tokens';
 import { useUI } from '../ui';
-import type { BookingSlot, WeeklyUsage } from '../types/booking';
+import type { BookingRecord, BookingSlot, WeeklyUsage } from '../types/booking';
 import {
   createBooking,
   getBookingSlots,
+  getMyBookings,
   getSchoolSettings,
   getWeeklyBookingUsage
 } from '../services/bookingApi';
@@ -76,12 +77,23 @@ export function NewBookingSheet({
   const [slotsLoading, setSlotsLoading] = useState(false);
   const [weeklyUsage, setWeeklyUsage] = useState<WeeklyUsage | null>(null);
   const [loadingUsage, setLoadingUsage] = useState(false);
+  const [existingBookings, setExistingBookings] = useState<BookingRecord[]>([]);
 
   const [submitting, setSubmitting] = useState(false);
   const [serverError, setServerError] = useState<string | null>(null);
 
   // 7 days of the currently selected week
   const weekDays = useMemo(() => getDaysOfWeek(weekMondayIso), [weekMondayIso]);
+
+  // Load existing bookings to check for 1-booking-per-day rule
+  useEffect(() => {
+    getMyBookings().then(setExistingBookings).catch(() => setExistingBookings([]));
+  }, []);
+
+  const bookingOnSelectedDate = useMemo(() => {
+    if (!date) return null;
+    return existingBookings.find((b) => b.date === date && b.status === 'booked' && !b.cancelledAt);
+  }, [date, existingBookings]);
 
   // Load school settings
   useEffect(() => {
@@ -218,14 +230,17 @@ export function NewBookingSheet({
 
           <Button
             full
-            disabled={!ready}
+            disabled={!ready || !!bookingOnSelectedDate}
             onClick={handleConfirm}
+            className={bookingOnSelectedDate ? 'bg-slate-200 text-slate-400 dark:bg-slate-800 dark:text-slate-500 cursor-not-allowed shadow-none' : ''}
           >
             {submitting ? (
               <div className="flex items-center gap-2">
                 <div className="h-4 w-4 animate-spin rounded-full border-2 border-white border-t-transparent" />
                 <span>Yuklanmoqda...</span>
               </div>
+            ) : bookingOnSelectedDate ? (
+              'Ushbu kunga yozilgansiz'
             ) : (
               t.confirmBookingButton
             )}
@@ -287,6 +302,7 @@ export function NewBookingSheet({
               const disabled = !check.bookable;
               const selected = iso === date;
               const isCurrentToday = iso === todayIso;
+              const hasBookingThisDay = existingBookings.some((b) => b.date === iso && b.status === 'booked' && !b.cancelledAt);
 
               return (
                 <button
@@ -300,7 +316,7 @@ export function NewBookingSheet({
                     setServerError(null);
                   }}
                   className={[
-                    'flex h-[62px] flex-col items-center justify-center rounded-card border transition-[transform,background-color,border-color] duration-150 ease-out active:scale-[0.97]',
+                    'relative flex h-[62px] flex-col items-center justify-center rounded-card border transition-[transform,background-color,border-color] duration-150 ease-out active:scale-[0.97]',
                     selected
                       ? 'border-primary bg-primary text-primaryfg shadow-sm'
                       : disabled
@@ -325,14 +341,21 @@ export function NewBookingSheet({
                     {d.date.getDate()}
                   </span>
 
-                  {isCurrentToday && (
+                  {hasBookingThisDay ? (
+                    <span
+                      className={[
+                        'mt-0.5 h-1.5 w-1.5 rounded-full',
+                        selected ? 'bg-white' : 'bg-emerald-500'
+                      ].join(' ')}
+                    />
+                  ) : isCurrentToday ? (
                     <span
                       className={[
                         'mt-0.5 h-1 w-1 rounded-full',
                         selected ? 'bg-white' : 'bg-primary'
                       ].join(' ')}
                     />
-                  )}
+                  ) : null}
                 </button>
               );
             })}
@@ -344,6 +367,18 @@ export function NewBookingSheet({
             </p>
           )}
         </section>
+
+        {/* Apple-style same-day booking notice banner */}
+        {bookingOnSelectedDate && (
+          <div className="flex items-center gap-2.5 rounded-2xl border border-amber-200/80 bg-amber-50/70 p-3.5 text-xs text-amber-900 shadow-2xs dark:border-amber-900/60 dark:bg-amber-950/20 dark:text-amber-200">
+            <div className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-amber-200/80 text-amber-800 dark:bg-amber-900/80 dark:text-amber-300 font-bold">
+              !
+            </div>
+            <div className="leading-relaxed">
+              Siz ushbu kunda allaqachon darsga yozilgansiz ({bookingOnSelectedDate.time || '14:00–15:20'}).
+            </div>
+          </div>
+        )}
 
         {/* Step 2: Time Slots (Apple Grouped List) */}
         <section className="space-y-2">
@@ -369,7 +404,9 @@ export function NewBookingSheet({
                 const isSelected = slot.timeSlotId === slotId;
                 const isFull = slot.full;
                 const isClosed = !!slot.closed;
-                const disabled = isFull || isClosed;
+                const isThisSlotBooked = bookingOnSelectedDate?.timeSlotId === slot.timeSlotId;
+                const isOtherSlotWhenBooked = !!bookingOnSelectedDate && !isThisSlotBooked;
+                const disabled = isFull || isClosed || isOtherSlotWhenBooked;
                 const isLast = index === slots.length - 1;
 
                 return (
@@ -378,9 +415,11 @@ export function NewBookingSheet({
                     type="button"
                     disabled={disabled}
                     onClick={() => {
-                      haptic('light');
-                      setSlotId(slot.timeSlotId);
-                      setServerError(null);
+                      if (!disabled) {
+                        haptic('light');
+                        setSlotId(slot.timeSlotId);
+                        setServerError(null);
+                      }
                     }}
                     className={[
                       'flex w-full items-center justify-between gap-3 px-4 py-3 text-left transition-colors active:opacity-80',
@@ -398,7 +437,7 @@ export function NewBookingSheet({
                           {slot.startTime}
                           {slot.endTime ? ` – ${slot.endTime}` : ''}
                         </span>
-                        {isSelected && (
+                        {isSelected && !isThisSlotBooked && (
                           <CheckCircle2Icon size={16} className="text-primary" />
                         )}
                       </div>
@@ -407,18 +446,26 @@ export function NewBookingSheet({
                       </span>
                     </div>
 
-                    <span
-                      className={[
-                        'font-sans text-caption font-medium tabular-nums',
-                        isFull
-                          ? 'text-destructive font-semibold'
-                          : isSelected
-                          ? 'text-primary font-semibold'
-                          : 'text-mutedfg'
-                      ].join(' ')}
-                    >
-                      {isFull ? t.slotStatusFull : `${slot.count}/${slot.capacity}`}
-                    </span>
+                    <div className="flex shrink-0 items-center gap-2">
+                      <span
+                        className={[
+                          'font-sans text-caption font-medium tabular-nums',
+                          isFull
+                            ? 'text-destructive font-semibold'
+                            : isSelected
+                            ? 'text-primary font-semibold'
+                            : 'text-mutedfg'
+                        ].join(' ')}
+                      >
+                        {isFull ? t.slotStatusFull : `${slot.count}/${slot.capacity}`}
+                      </span>
+
+                      {isThisSlotBooked && (
+                        <span className="inline-flex items-center gap-1 rounded-md bg-emerald-50 px-2 py-0.5 font-sans text-[11px] font-semibold text-emerald-700 dark:bg-emerald-950/60 dark:text-emerald-300">
+                          <CheckCircle2Icon size={12} /> Yozilgansiz
+                        </span>
+                      )}
+                    </div>
                   </button>
                 );
               })}

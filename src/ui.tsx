@@ -1,5 +1,6 @@
 import React, { createContext, useContext } from 'react';
 import type { Locale } from './strings';
+import type { AcademicLevelCode } from './types/levelIdentity';
 
 export type Role = 'student' | 'parent';
 export type DataState = 'full' | 'loading' | 'empty' | 'error' | 'offline';
@@ -43,6 +44,8 @@ export interface UIApi {
   markAllRead: () => void;
   language: Locale;
   setLanguage: (l: Locale) => void;
+  studentLevel: AcademicLevelCode;
+  setStudentLevel: (l: AcademicLevelCode) => void;
 }
 
 export const UIContext = createContext<UIApi | null>(null);

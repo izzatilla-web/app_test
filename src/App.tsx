@@ -35,6 +35,8 @@ import type { Locale } from './strings';
 import { parent, student } from './mockData';
 import { GAMES_ENABLED } from './config';
 
+import type { AcademicLevelCode } from './types/levelIdentity';
+
 type AuthStep = 'splash' | 'pin' | 'signin' | 'password' | 'biometric';
 
 /* ── Games feature ───────────────────────────────────────────────
@@ -80,6 +82,9 @@ export function App() {
   const [activeChildId, setActiveChildId] = useState(1);
   const [unreadCount, setUnreadCount] = useState(2);
   const [language, setLanguageState] = useState<Locale>(loadStoredLocale);
+  const [studentLevel, setStudentLevelState] = useState<AcademicLevelCode>(() => {
+    return (localStorage.getItem('student_academic_level') as AcademicLevelCode) || (student.level as AcademicLevelCode) || 'A2';
+  });
   const [scrollSignals, setScrollSignals] = useState<Record<number, number>>({});
   const toastTimer = useRef<number | null>(null);
   const toastExitTimer = useRef<number | null>(null);
@@ -98,6 +103,12 @@ export function App() {
   const setLanguage = useCallback((next: Locale) => {
     setLocale(next);
     setLanguageState(next);
+  }, []);
+
+  const setStudentLevel = useCallback((l: AcademicLevelCode) => {
+    localStorage.setItem('student_academic_level', l);
+    student.level = l;
+    setStudentLevelState(l);
   }, []);
 
   const pop = useCallback(() => setStack((prev) => prev.slice(0, -1)), []);
@@ -131,9 +142,11 @@ export function App() {
       unreadCount,
       markAllRead: () => setUnreadCount(0),
       language,
-      setLanguage
+      setLanguage,
+      studentLevel,
+      setStudentLevel
     }),
-    [role, dataState, gameLocked, activeChildId, dark, unreadCount, language, pop, toast, setLanguage]
+    [role, dataState, gameLocked, activeChildId, dark, unreadCount, language, studentLevel, pop, toast, setLanguage, setStudentLevel]
   );
 
   /* Games disabled → the O'yin tab is left out. Tab ids stay stable so the
@@ -332,6 +345,8 @@ export function App() {
         setGameLocked={setGameLocked}
         failNext={failNext}
         setFailNext={setFailNext}
+        studentLevel={studentLevel}
+        setStudentLevel={setStudentLevel}
         onRestart={() => {
           setMode('auth');
           setAuthStep('splash');
