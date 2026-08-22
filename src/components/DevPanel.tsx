@@ -14,8 +14,6 @@ interface DevPanelProps {
   setDataState: (s: DataState) => void;
   gameLocked: boolean;
   setGameLocked: (v: boolean) => void;
-  failNext: boolean;
-  setFailNext: (v: boolean) => void;
   /** Prototype-only: the level normally comes from the CRM, never the student. */
   studentLevel: AcademicLevelCode;
   setStudentLevel: (l: AcademicLevelCode) => void;
@@ -32,8 +30,6 @@ export function DevPanel({
   setDataState,
   gameLocked,
   setGameLocked,
-  failNext,
-  setFailNext,
   studentLevel,
   setStudentLevel,
   onRestart
@@ -150,16 +146,6 @@ export function DevPanel({
           ))}
         </div>
       </div>
-
-      <label className="mt-3 flex items-center gap-2">
-        <input
-          type="checkbox"
-          checked={failNext}
-          onChange={(e) => setFailNext(e.target.checked)}
-          className="accent-neutral-200" />
-
-        <span>fail sign-in</span>
-      </label>
 
       <button
         type="button"

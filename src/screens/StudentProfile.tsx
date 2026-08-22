@@ -1,8 +1,10 @@
-import React, { useState, useRef } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import {
   BellIcon,
   GlobeIcon,
   LockIcon,
+  ScanFaceIcon,
+  SmartphoneIcon,
   MoonIcon,
   CameraIcon,
   Volume2Icon,
@@ -15,9 +17,15 @@ import { Switch } from '../components/Switch';
 import { PhoneSheet } from '../components/PhoneSheet';
 import { LanguageSheet } from '../components/LanguageSheet';
 import { Notifications } from './Notifications';
+import { Devices } from './Devices';
+import { enrollBiometrics, forgetBiometrics, isBiometricEnrolled, isBiometricSupported } from '../services/biometrics';
 import { isSoundMuted, setSoundMuted } from '../sound';
 import { t, localeLabel } from '../strings';
 import { student } from '../mockData';
+import { firstNameOf, fullNameOf } from '../types/phoenixUser';
+import { photoUrl, updateMyPhone, uploadMyPhoto } from '../services/portalApi';
+import { ApiError } from '../services/http';
+import { phoneErrorMessage } from '../services/portalAdapters';
 import { useUI } from '../ui';
 import { haptic } from '../tokens';
 import { useLevelIdentity } from '../useLevelIdentity';
@@ -28,31 +36,99 @@ export function StudentProfile({ scrollSignal }: { scrollSignal: number }) {
   const { meta } = useLevelIdentity();
   const fileInputRef = useRef<HTMLInputElement | null>(null);
 
-  const [phone, setPhone] = useState(student.phone);
-  const [pinOn, setPinOn] = useState(true);
+  /* The school's record, from Phoenix-MS — the mock value only stands in until it loads. */
+  const phone = ui.activeChild?.student.phone ?? student.phone;
+
+  /** Writes the new number to Phoenix-MS, then re-reads what the CRM stored. */
+  async function savePhone(next: string): Promise<string | null> {
+    try {
+      await updateMyPhone(next);
+    } catch (err) {
+      if (err instanceof ApiError) return phoneErrorMessage(err.status, err.message);
+      return t.authErrGeneric;
+    }
+    ui.reloadPortal();
+    return null;
+  }
   const [soundOn, setSoundOn] = useState(() => !isSoundMuted());
 
-  // Direct image upload state
-  const [customPhoto, setCustomPhoto] = useState<string | null>(() => {
-    return localStorage.getItem('phoenix_student_avatar') || null;
-  });
+  /* The picture lives in Phoenix-MS, not on this phone. `hasPhoto` on the
+     session says whether there is one; the stamp busts the CRM's one-minute
+     cache so a freshly uploaded picture appears at once. */
+  const [photoStamp, setPhotoStamp] = useState(0);
+  const [photoBusy, setPhotoBusy] = useState(false);
+  const currentPhoto =
+  ui.user && ui.user.hasPhoto ? photoUrl(ui.user.id, photoStamp) : null;
 
-  function handlePhotoUpload(e: React.ChangeEvent<HTMLInputElement>) {
+  async function handlePhotoUpload(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
-    if (!file) return;
-    if (file.size > 5 * 1024 * 1024) {
-      ui.toast('Rasm hajmi 5MB dan oshmasligi kerak', 'warning');
+    e.target.value = '';
+    if (!file || photoBusy) return;
+    // Phoenix-MS accepts up to 15 MB and does its own resizing.
+    if (file.size > 15 * 1024 * 1024) {
+      ui.toast(t.photoTooLarge, 'warning');
       return;
     }
-    const reader = new FileReader();
-    reader.onload = () => {
-      const result = reader.result as string;
-      setCustomPhoto(result);
-      localStorage.setItem('phoenix_student_avatar', result);
+    setPhotoBusy(true);
+    try {
+      await uploadMyPhoto(file);
+      ui.refreshUser();
+      setPhotoStamp(Date.now());
       haptic('success');
-      ui.toast('Profil rasmi yangilandi', 'success');
+      ui.toast(t.photoUpdated, 'success');
+    } catch (err) {
+      haptic('warning');
+      ui.toast(err instanceof ApiError ? err.message : t.photoFailed, 'warning');
+    } finally {
+      setPhotoBusy(false);
+    }
+  }
+
+
+  /* Quick unlock: the phone's own face or fingerprint check, kept for this
+     account on this device. It reveals a session Phoenix-MS already granted —
+     the server lock below is the stronger, password-backed one. */
+  const [bioSupported, setBioSupported] = useState(false);
+  const [bioOn, setBioOn] = useState(false);
+  const [bioBusy, setBioBusy] = useState(false);
+
+  useEffect(() => {
+    let cancelled = false;
+    isBiometricSupported().
+    then((supported) => {
+      if (cancelled) return;
+      setBioSupported(supported);
+      setBioOn(!!ui.user && isBiometricEnrolled(ui.user.id));
+    }).
+    catch(() => {
+      if (!cancelled) setBioSupported(false);
+    });
+    return () => {
+      cancelled = true;
     };
-    reader.readAsDataURL(file);
+  }, [ui.user]);
+
+  async function toggleBiometrics(next: boolean) {
+    if (!ui.user || bioBusy) return;
+    setBioBusy(true);
+    try {
+      if (!next) {
+        forgetBiometrics(ui.user.id);
+        setBioOn(false);
+        ui.refreshBiometrics();
+        ui.toast(t.bioDisabled, 'info');
+        return;
+      }
+      const ok = await enrollBiometrics(ui.user.id, ui.user.username);
+      setBioOn(ok);
+      ui.refreshBiometrics();
+      ui.toast(ok ? t.bioEnabled : t.bioEnrollFailed, ok ? 'success' : 'warning');
+    } catch {
+      setBioOn(false);
+      ui.toast(t.bioEnrollFailed, 'warning');
+    } finally {
+      setBioBusy(false);
+    }
   }
 
   return (
@@ -91,14 +167,14 @@ export function StudentProfile({ scrollSignal }: { scrollSignal: number }) {
                   boxShadow: `0 0 0 2px ${levelGlow(meta, ui.dark ? 0.4 : 0.28)}, 0 0 14px ${levelGlow(meta, ui.dark ? 0.3 : 0.18)}`
                 }}
               >
-                {customPhoto ? (
+                {currentPhoto ? (
                   <img
-                    src={customPhoto}
-                    alt={student.firstName}
+                    src={currentPhoto}
+                    alt={firstNameOf(ui.user)}
                     className="h-full w-full object-cover"
                   />
                 ) : (
-                  <Avatar name={student.firstName} seed={student.id} size={96} />
+                  <Avatar name={firstNameOf(ui.user)} seed={student.id} size={96} />
                 )}
               </div>
 
@@ -110,14 +186,14 @@ export function StudentProfile({ scrollSignal }: { scrollSignal: number }) {
 
             {/* Student Name */}
             <h2 className="mt-2.5 font-sans text-base font-bold text-foreground">
-              {student.firstName} {student.lastName}
+              {fullNameOf(ui.user)}
             </h2>
 
             {/* Student Login ID */}
             <div className="mt-1 flex items-center gap-1.5 font-sans text-xs text-mutedfg">
               <span>ID:</span>
               <span className="rounded-md bg-slate-100 px-2 py-0.5 font-mono text-xs font-semibold text-slate-700 dark:bg-slate-800 dark:text-slate-300">
-                {student.studentNo}
+                {ui.user?.username ?? student.studentNo}
               </span>
             </div>
           </div>
@@ -134,7 +210,7 @@ export function StudentProfile({ scrollSignal }: { scrollSignal: number }) {
               ui.openSheet({
                 key: 'phone',
                 detent: 'medium',
-                node: <PhoneSheet value={phone} onSave={setPhone} />
+                node: <PhoneSheet value={phone ?? ''} onSave={savePhone} />
               })
             }
           />
@@ -197,10 +273,35 @@ export function StudentProfile({ scrollSignal }: { scrollSignal: number }) {
           />
 
           <ListRow
+            icon={ScanFaceIcon}
+            label={<span className="font-normal">{t.bioRow}</span>}
+            value={bioSupported ? undefined : t.bioUnavailable}
+            trailing={
+              bioSupported ? (
+                <Switch checked={bioOn} onChange={toggleBiometrics} label={t.bioRow} />
+              ) : undefined
+            }
+          />
+
+          <ListRow
+            icon={SmartphoneIcon}
+            label={<span className="font-normal">{t.devicesRow}</span>}
+            chevron
+            onClick={() =>
+              ui.push({
+                key: 'devices',
+                backTitle: t.tabProfile,
+                node: <Devices backTitle={t.tabProfile} />
+              })
+            }
+          />
+
+          <ListRow
             last
             icon={LockIcon}
-            label={<span className="font-normal">{t.pinRow}</span>}
-            trailing={<Switch checked={pinOn} onChange={setPinOn} label={t.pinRow} />}
+            label={<span className="font-normal">{t.lockNow}</span>}
+            chevron
+            onClick={ui.lockNow}
           />
         </ListGroup>
 

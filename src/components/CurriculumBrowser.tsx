@@ -1,4 +1,5 @@
 import React, { useState, useRef, useMemo, useEffect, useCallback } from 'react';
+import { useCurriculum } from '../useCurriculum';
 import { CheckIcon, ChevronLeftIcon, ChevronRightIcon, LockIcon } from 'lucide-react';
 import { EmptyState } from './EmptyState';
 import { t } from '../strings';
@@ -29,7 +30,7 @@ const BAND_CONFIGS: Record<string, { name: string; subtitle: string }> = {
 
 export function CurriculumBrowser({ child }: { child: ChildRecord }) {
   const ui = useUI();
-  const allLevels = useMemo(() => curriculumFor(child.id), [child.id]);
+  const allLevels = useCurriculum();
   const overall = useMemo(() => curriculumProgress(allLevels), [allLevels]);
   const position = useMemo(() => currentPosition(allLevels), [allLevels]);
 

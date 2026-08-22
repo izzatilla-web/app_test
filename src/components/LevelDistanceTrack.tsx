@@ -1,8 +1,6 @@
 import React from 'react';
 import { useUI } from '../ui';
-import { haptic } from '../tokens';
 import { useLevelIdentity } from '../useLevelIdentity';
-import { LevelMapSheet } from './LevelMapSheet';
 import { LevelSigil } from './LevelSignatureMark';
 import { levelAccent, levelGlow } from '../types/levelIdentity';
 
@@ -12,21 +10,10 @@ export function LevelDistanceTrack({ className = '' }: { className?: string }) {
   const accent = levelAccent(meta, ui.dark);
   const fill = percent ?? 0;
 
-  function handleOpen() {
-    haptic('light');
-    ui.openSheet({
-      key: 'level-map-sheet',
-      detent: 'large',
-      node: <LevelMapSheet />
-    });
-  }
-
   return (
-    <button
-      type="button"
-      onClick={handleOpen}
+    <div
       aria-label={`Daraja: ${meta.code}`}
-      className="group block w-full select-none text-left transition-opacity active:opacity-80"
+      className="block w-full select-none"
     >
       <div className={['flex items-center gap-2.5', className].join(' ')}>
         <span
@@ -79,6 +66,6 @@ export function LevelDistanceTrack({ className = '' }: { className?: string }) {
           </span>
         )}
       </div>
-    </button>
+    </div>
   );
 }

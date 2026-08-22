@@ -15,6 +15,9 @@ export function presencePill(p: Presence): PillSpec | null {
       return { tone: 'amber', label: t.late };
     case 'absent':
       return { tone: 'red', label: t.absent };
+    case 'never_arrived':
+      // Kept distinct from 'absent' — see the Presence type.
+      return { tone: 'grey', label: t.neverArrived };
     case 'pending':
       return { tone: 'grey', label: t.unmarked };
     default:

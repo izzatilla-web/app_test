@@ -36,10 +36,14 @@ export function LessonList({ lessons, group, highlightDate }: LessonListProps) {
         const presence = presencePill(lesson.present);
         const homework = lesson.present === 'absent' ? null : homeworkPill(lesson.homework);
         const highlighted = highlightDate === lesson.date;
+        /* Phoenix-MS can return more than one lesson on the same day (two
+           groups, or a make-up). The date alone is therefore not a key, and
+           only the first row of a day carries the id the calendar jumps to. */
+        const firstOfDay = lessons.findIndex((l) => l.date === lesson.date) === i;
         return (
           <div
-            key={lesson.date}
-            id={`lesson-${lesson.date}`}
+            key={`${lesson.date}-${i}`}
+            id={firstOfDay ? `lesson-${lesson.date}` : undefined}
             className="transition-colors duration-500 ease-out"
             style={{ backgroundColor: highlighted ? 'hsl(var(--primary) / 0.08)' : 'transparent' }}>
             

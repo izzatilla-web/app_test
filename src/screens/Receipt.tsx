@@ -3,12 +3,13 @@ import { CheckIcon, DownloadIcon, Share2Icon, XCircleIcon, XIcon } from 'lucide-
 import { Button } from '../components/Button';
 import { t } from '../strings';
 import { formatSum, mediumDate, haptic } from '../tokens';
-import type { ChildRecord, Payment } from '../mockData';
+import type { Payment } from '../mockData';
+import type { ReceiptChild } from './MonthDetail';
 import { useUI } from '../ui';
 
 interface ReceiptProps {
   payment: Payment;
-  child: ChildRecord;
+  child: ReceiptChild;
   monthLabel: string;
   onClose: () => void;
 }
@@ -66,7 +67,7 @@ export function Receipt({ payment, child, monthLabel, onClose }: ReceiptProps) {
 
           <dl className="space-y-3 px-6">
             <Row label={t.receiptTo} value={`${child.firstName} ${child.lastName}`} />
-            <Row label={t.receiptId} value={child.studentNo} mono />
+            <Row label={t.receiptId} value={String(child.studentNo).padStart(5, '0')} mono />
             <Row label={t.receiptMonth} value={monthLabel} />
             <div className="flex items-start justify-between gap-4">
               <dt className="font-sans text-subhead text-mutedfg">{t.receiptMethod}</dt>

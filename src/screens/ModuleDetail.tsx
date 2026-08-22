@@ -1,14 +1,12 @@
-import React from 'react';
+import React, { useState } from 'react';
 import {
   ChevronRightIcon,
-  CheckCircle2Icon,
-  LayersIcon
+  CheckCircle2Icon
 } from 'lucide-react';
 import { PushScreen } from '../components/ScrollScreen';
 import { TopicMaterialHubSheet } from '../components/TopicMaterialHubSheet';
 import { t } from '../strings';
 import { formatDuration, haptic } from '../tokens';
-import { topicAccess } from '../access';
 import type { CurriculumLevel, CurriculumModule, CurriculumTopic } from '../curriculum';
 import type { ChildRecord } from '../mockData';
 import { useUI } from '../ui';
@@ -23,21 +21,42 @@ interface ModuleDetailProps {
 /**
  * Minimalist, Apple-style Module & Lessons Screen:
  * - Direct ordered lesson list (01, 02, 03)
+ * - Per-lesson progress bar (completed 100% / current 50% / locked empty)
  * - Tapping any lesson opens the 4-in-1 Learning Materials Hub
  */
-export function ModuleDetail({ levels, level, module }: ModuleDetailProps) {
+export function ModuleDetail({ level, module }: ModuleDetailProps) {
   const ui = useUI();
 
-  function openTopicMaterials(topic: CurriculumTopic) {
+  // Local state to track completed topics and immediately update visuals on complete
+  const [completedTopicMap, setCompletedTopicMap] = useState<Record<number, boolean>>(() => {
+    const map: Record<number, boolean> = {};
+    module.topics.forEach((t) => {
+      if (t.studied) map[t.id] = true;
+    });
+    return map;
+  });
+
+  function handleTopicComplete(topicId: number) {
+    setCompletedTopicMap((prev) => ({ ...prev, [topicId]: true }));
+  }
+
+  function handleOpenTopic(topic: CurriculumTopic, state: 'completed' | 'current' | 'locked') {
+    if (state === 'locked') {
+      haptic('warning');
+      ui.toast('Avval oldingi darsni yakunlang!', 'info');
+      return;
+    }
+
     haptic('light');
     ui.openSheet({
       key: `topic-hub-${topic.id}`,
-      detent: 'medium',
+      detent: 'large',
       node: (
         <TopicMaterialHubSheet
           topic={topic}
           levelCode={level.code}
           moduleCode={module.code}
+          onComplete={handleTopicComplete}
         />
       )
     });
@@ -53,9 +72,20 @@ export function ModuleDetail({ levels, level, module }: ModuleDetailProps) {
         {/* Direct 1x1 Ordered Lesson List */}
         <div className="space-y-2.5">
           {module.topics.map((topic, index) => {
-            const state = topicAccess(levels, topic);
-            const completed = state === 'completed';
-            const current = state === 'current';
+            const completed = !!completedTopicMap[topic.id] || topic.studied;
+
+            // First uncompleted topic is 'current', everything after it is 'locked'
+            const allPreviousDone = module.topics
+              .slice(0, index)
+              .every((t) => !!completedTopicMap[t.id] || t.studied);
+            const current = !completed && allPreviousDone;
+
+            const state: 'completed' | 'current' | 'locked' = completed
+              ? 'completed'
+              : current
+              ? 'current'
+              : 'locked';
+
             const totalTopicSecs = topic.content.videos.reduce((acc, v) => acc + v.seconds, 0);
             const numStr = String(index + 1).padStart(2, '0');
 
@@ -63,7 +93,7 @@ export function ModuleDetail({ levels, level, module }: ModuleDetailProps) {
               <button
                 key={topic.id}
                 type="button"
-                onClick={() => openTopicMaterials(topic)}
+                onClick={() => handleOpenTopic(topic, state)}
                 className={[
                   'group flex w-full items-center gap-3.5 rounded-2xl border p-4 text-left transition-all duration-150 active:scale-[0.99] hover:border-slate-300 dark:hover:border-slate-700',
                   current
@@ -85,7 +115,7 @@ export function ModuleDetail({ levels, level, module }: ModuleDetailProps) {
                   {numStr}
                 </span>
 
-                {/* Title & Material resources count */}
+                {/* Title, material resources count & progress */}
                 <div className="min-w-0 flex-1">
                   <p
                     className={[
@@ -100,6 +130,41 @@ export function ModuleDetail({ levels, level, module }: ModuleDetailProps) {
                     <span>•</span>
                     <span className="text-primary font-medium">4 ta o‘quv resursi</span>
                   </p>
+
+                  {/* Per-lesson progress bar */}
+                  <div className="mt-2 flex items-center gap-2">
+                    <div
+                      className={[
+                        'h-1.5 flex-1 overflow-hidden rounded-full',
+                        current
+                          ? 'bg-blue-100 dark:bg-blue-950/60'
+                          : 'bg-slate-100 dark:bg-slate-800'
+                      ].join(' ')}
+                    >
+                      <div
+                        className={[
+                          'h-full rounded-full transition-all duration-500',
+                          completed
+                            ? 'w-full bg-emerald-500'
+                            : current
+                            ? 'w-1/2 bg-blue-600 dark:bg-blue-500'
+                            : 'w-0 bg-transparent'
+                        ].join(' ')}
+                      />
+                    </div>
+                    {(completed || current) && (
+                      <span
+                        className={[
+                          'shrink-0 font-sans text-[10px] font-bold tabular-nums',
+                          completed
+                            ? 'text-emerald-600 dark:text-emerald-400'
+                            : 'text-blue-600 dark:text-blue-400'
+                        ].join(' ')}
+                      >
+                        {completed ? '100%' : '50%'}
+                      </span>
+                    )}
+                  </div>
                 </div>
 
                 {/* Circular action button on the right */}

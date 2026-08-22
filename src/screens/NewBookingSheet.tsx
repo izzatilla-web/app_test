@@ -434,15 +434,20 @@ export function NewBookingSheet({
                     <div className="min-w-0 flex-1">
                       <div className="flex items-center gap-2">
                         <span className="font-sans text-headline font-semibold tabular-nums text-foreground">
-                          {slot.startTime}
-                          {slot.endTime ? ` – ${slot.endTime}` : ''}
+                          {slot.label}
                         </span>
                         {isSelected && !isThisSlotBooked && (
                           <CheckCircle2Icon size={16} className="text-primary" />
                         )}
                       </div>
+                      {/* The CRM's label is the hours themselves, so this line shows
+                          the room left instead of repeating them. */}
                       <span className="block font-sans text-caption text-mutedfg">
-                        {slot.label}
+                        {slot.full ?
+                        t.slotStatusFull :
+                        slot.capacity - slot.count <= 3 ?
+                        t.slotLastPlaces(slot.capacity - slot.count) :
+                        t.slotFreePlaces(slot.capacity - slot.count)}
                       </span>
                     </div>
 

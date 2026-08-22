@@ -1,4 +1,5 @@
 import { DumbbellIcon } from 'lucide-react';
+import { useCurriculum } from '../useCurriculum';
 import { Card } from './Card';
 import { Button } from './Button';
 import { NewBookingSheet } from '../screens/NewBookingSheet';
@@ -23,7 +24,9 @@ interface PracticeItem {
 export function PracticePlan({ child }: {child: ChildRecord;}) {
   const ui = useUI();
 
-  const items: PracticeItem[] = allModules(curriculumFor(child.id)).
+  const levels = useCurriculum();
+
+  const items: PracticeItem[] = allModules(levels).
   flatMap((module) => module.topics.map((topic) => ({ topic, module }))).
   filter((item) => {
     const state = masteryState(item.topic);

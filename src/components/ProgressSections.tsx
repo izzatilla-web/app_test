@@ -160,7 +160,7 @@ export function SupportSection({ sessions }: { sessions: SupportSession[] }) {
     <ListGroup header={t.supportHeader}>
       {sessions.map((session, i) => (
         <ListRow
-          key={session.date}
+          key={`${session.date}-${i}`}
           icon={UsersIcon}
           iconTone="text-mutedfg"
           last={i === sessions.length - 1}
@@ -169,7 +169,9 @@ export function SupportSection({ sessions }: { sessions: SupportSession[] }) {
               {mediumDate(session.date)} · {session.time}
             </span>
           }
-          secondary={session.attended ? 'Qatnashgan' : 'Kutilmoqda'}
+          secondary={
+            session.attended ? t.supportAttended : session.missed ? t.supportMissed : t.supportUpcoming
+          }
         />
       ))}
     </ListGroup>

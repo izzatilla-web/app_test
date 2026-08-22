@@ -519,32 +519,25 @@ export function StudentBookings({ scrollSignal }: { scrollSignal: number }) {
                           <div className="min-w-0 flex-1">
                             <div className="flex items-center gap-2">
                               <span className="font-sans text-headline font-semibold tabular-nums text-foreground">
-                                {slot.startTime}
-                                {slot.endTime ? ` – ${slot.endTime}` : ''}
+                                {slot.label}
                               </span>
                               {isSelected && !isThisSlotBookedByStudent && (
                                 <CheckCircle2Icon size={16} className="text-primary" />
                               )}
                             </div>
+                            {/* Phoenix-MS labels a slot with its own hours, so the line
+                                below carries what a family actually needs: how much
+                                room is left. */}
                             <span className="block font-sans text-caption text-mutedfg">
-                              {slot.label}
+                              {isFull ?
+                              t.slotStatusFull :
+                              slot.capacity - slot.count <= 3 ?
+                              t.slotLastPlaces(slot.capacity - slot.count) :
+                              t.slotFreePlaces(slot.capacity - slot.count)}
                             </span>
                           </div>
 
                           <div className="flex shrink-0 items-center gap-3">
-                            <span
-                              className={[
-                                'font-sans text-caption font-medium tabular-nums',
-                                isFull
-                                  ? 'text-destructive font-semibold'
-                                  : isSelected
-                                  ? 'text-primary font-semibold'
-                                  : 'text-mutedfg'
-                              ].join(' ')}
-                            >
-                              {isFull ? t.slotStatusFull : `${slot.count}/${slot.capacity}`}
-                            </span>
-
                             {isThisSlotBookedByStudent ? (
                               <span className="inline-flex h-[32px] items-center gap-1 rounded-lg bg-emerald-50 px-3 font-sans text-footnote font-semibold text-emerald-700 dark:bg-emerald-950/60 dark:text-emerald-300">
                                 <CheckCircle2Icon size={13} /> Yozilgansiz
@@ -671,7 +664,7 @@ export function StudentBookings({ scrollSignal }: { scrollSignal: number }) {
                           </h4>
 
                           <p className="mt-0.5 font-sans text-xs text-mutedfg">
-                            {b.teacherName || student.teacher} · {b.room || '204-xona'}
+                            {[b.teacherName, b.room].filter(Boolean).join(' · ')}
                           </p>
                         </div>
 

@@ -1,4 +1,5 @@
 import { useMemo } from 'react';
+import { useCurriculum } from '../useCurriculum';
 import {
   AwardIcon,
   CheckCircle2Icon,
@@ -29,7 +30,7 @@ import { CollapsibleLevelBands } from './CollapsibleLevelBands';
  */
 export function ProgressOverview({ child }: { child: ChildRecord }) {
   const ui = useUI();
-  const levels = useMemo(() => curriculumFor(child.id), [child.id]);
+  const levels = useCurriculum();
   const overall = useMemo(() => curriculumProgress(levels), [levels]);
   const position = useMemo(() => currentPosition(levels), [levels]);
 

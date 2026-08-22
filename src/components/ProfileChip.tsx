@@ -1,10 +1,7 @@
 import React, { useEffect, useState } from 'react';
-import { ChevronDownIcon } from 'lucide-react';
 import { Avatar } from './Avatar';
 import { useUI } from '../ui';
-import { haptic } from '../tokens';
 import { useLevelIdentity } from '../useLevelIdentity';
-import { LevelMapSheet } from './LevelMapSheet';
 import { bandOf, levelAccent, levelGlow } from '../types/levelIdentity';
 
 interface ProfileChipProps {
@@ -13,7 +10,6 @@ interface ProfileChipProps {
   /** Legacy fallback for the level code; the live value comes from useUI(). */
   caption: string;
   label: string;
-  /** Kept for API compatibility — the chip now opens the level sheet itself. */
   onClick?: () => void;
 }
 
@@ -22,12 +18,52 @@ const RING_RADIUS = 17;
 const RING_LENGTH = 2 * Math.PI * RING_RADIUS;
 
 /**
- * Top-left identity block: avatar wrapped in the level ring + name + level badge.
- *
- * Clean Apple minimalism:
- *   • Single name without redundant dot indicators;
- *   • Elegant micro-pill level badge + level rank title;
- *   • Smooth tap target that opens the level map.
+ * Dynamic Status Rank titles based on student's current academic level.
+ * Replaces duplicate level codes with exciting learner / gamer status ranks!
+ */
+export function getLevelRankTitle(code: string): string {
+  const normalized = (code || '').toUpperCase().trim();
+  switch (normalized) {
+    case 'A1':
+      return 'Boshlovchi';
+    case 'A2':
+      return 'Izlanuvchi';
+    case 'A3':
+      return 'Iqtidor';
+    case 'B1':
+      return 'Bilimdon';
+    case 'B2':
+      return 'Ekspert';
+    case 'B3':
+      return 'Usta (Master)';
+    case 'C1':
+      return 'Grandmaster';
+    case 'C2':
+      return 'Chempion';
+    case 'C3':
+      return 'Elita';
+    case 'D1':
+      return 'Afsonaviy';
+    case 'D2':
+      return 'Afsona (Legend)';
+    case 'D3':
+      return 'Olimpiada Qiroli';
+    case 'E1':
+    case 'E2':
+    case 'E3':
+      return 'Geometr';
+    default:
+      if (normalized.startsWith('A')) return 'Izlanuvchi';
+      if (normalized.startsWith('B')) return 'Bilimdon';
+      if (normalized.startsWith('C')) return 'Master';
+      if (normalized.startsWith('D')) return 'Legend';
+      return 'Izlanuvchi';
+  }
+}
+
+/**
+ * Top-left identity block: avatar with level progress ring + student name + dynamic Status Rank.
+ * Clean, pure Apple minimalism without duplicate level codes.
  */
 export function ProfileChip({ name, seed, caption, label }: ProfileChipProps) {
   const ui = useUI();
@@ -35,6 +71,9 @@ export function ProfileChip({ name, seed, caption, label }: ProfileChipProps) {
   const accent = levelAccent(meta, ui.dark);
   const band = bandOf(meta);
   const [drawn, setDrawn] = useState(false);
+
+  const levelCode = meta.code || caption || 'A2';
+  const rankTitle = getLevelRankTitle(levelCode);
 
   useEffect(() => {
     const frame = window.requestAnimationFrame(() => setDrawn(true));
@@ -44,21 +83,10 @@ export function ProfileChip({ name, seed, caption, label }: ProfileChipProps) {
   const arc = drawn ? (percent ?? 0) : 0;
   const dashOffset = RING_LENGTH * (1 - arc / 100);
 
-  function handleOpenMap() {
-    haptic('light');
-    ui.openSheet({
-      key: 'level-map-sheet',
-      detent: 'large',
-      node: <LevelMapSheet />
-    });
-  }
-
   return (
-    <button
-      type="button"
-      onClick={handleOpenMap}
+    <div
       aria-label={label}
-      className="group flex h-[44px] max-w-[240px] items-center gap-2.5 rounded-full pl-0.5 pr-2.5 transition-all duration-150 ease-out hover:bg-slate-100/60 active:scale-[0.97] dark:hover:bg-slate-800/60"
+      className="flex h-[44px] max-w-[240px] items-center gap-2.5 rounded-full pl-0.5 pr-2.5 select-none"
     >
       {/* ── 1. Avatar with Level Progress Ring ── */}
       <div
@@ -102,31 +130,24 @@ export function ProfileChip({ name, seed, caption, label }: ProfileChipProps) {
         </div>
       </div>
 
-      {/* ── 2. User Name & Sleek Apple Level Pill Badge ── */}
+      {/* ── 2. User Name & Dynamic Status Rank Badge ── */}
       <div className="flex min-w-0 flex-col items-start text-left">
         <span className="truncate font-sans text-[13px] font-bold leading-none text-foreground">
           {name}
         </span>
 
-        <div className="mt-1 flex items-center gap-1.5">
+        <div className="mt-1 flex items-center">
           <span
-            className="flex items-center justify-center rounded px-1.5 py-[2px] font-sans text-[10px] font-extrabold leading-none tabular-nums"
+            className="inline-flex items-center justify-center rounded-full px-2 py-[2px] font-sans text-[10px] font-extrabold tracking-wider uppercase leading-none shadow-2xs"
             style={{
-              backgroundColor: `hsl(${band.glow} / ${ui.dark ? 0.22 : 0.12})`,
+              backgroundColor: `hsl(${band.glow} / ${ui.dark ? 0.24 : 0.12})`,
               color: accent
             }}
           >
-            {meta.code || caption}
+            {rankTitle}
           </span>
-          <span className="truncate font-sans text-[11px] font-medium leading-none text-mutedfg">
-            {meta.title || band.shortTitle}
-          </span>
-          <ChevronDownIcon
-            size={11}
-            className="shrink-0 text-slate-400 transition-colors group-hover:text-foreground"
-          />
         </div>
       </div>
-    </button>
+    </div>
   );
 }

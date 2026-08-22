@@ -20,6 +20,7 @@ import { Ranking } from './Ranking';
 import { ChatList } from './ChatList';
 import { t } from '../strings';
 import { student } from '../mockData';
+import { firstNameOf } from '../types/phoenixUser';
 import { useChatUnread } from '../useChatUnread';
 import { useUI } from '../ui';
 
@@ -140,7 +141,7 @@ export function StudentToday({ scrollSignal }: {scrollSignal: number;}) {
   return (
     <ScrollScreen
       title={t.tabToday}
-      subtitle={t.todayGreeting(student.firstName)}
+      subtitle={t.todayGreeting(firstNameOf(ui.user))}
       backdrop={<LevelAuraLayer meta={meta} dark={ui.dark} celebrate={celebrate} />}
       titleAccessory={<LevelMonogram key={meta.code} meta={meta} dark={ui.dark} />}
       belowTitle={
@@ -155,9 +156,9 @@ export function StudentToday({ scrollSignal }: {scrollSignal: number;}) {
       offline={dataState === 'offline'}
       leading={
       <ProfileChip
-        name={student.firstName}
+        name={firstNameOf(ui.user)}
         seed={student.id}
-        caption={student.level}
+        caption={ui.activeChild?.student.levelCode ?? student.level}
         label={t.profileOpenLabel}
         onClick={() => ui.goToTab(6)} />
 

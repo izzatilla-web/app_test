@@ -1,10 +1,15 @@
 import React from 'react';
 import { Avatar } from './Avatar';
 import { haptic } from '../tokens';
-import type { ChildRecord } from '../mockData';
+
+/** Only what the switcher draws — satisfied by a Phoenix-MS child and by a mock record alike. */
+export interface SwitchableChild {
+  id: number;
+  firstName: string;
+}
 
 interface ChildSwitcherProps {
-  children: ChildRecord[];
+  children: SwitchableChild[];
   activeId: number;
   onSelect: (id: number) => void;
 }

@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { useCurriculum } from '../useCurriculum';
 import { ChevronDownIcon } from 'lucide-react';
 import { haptic, ASSETS_3D } from '../tokens';
 import { t } from '../strings';
@@ -15,12 +16,19 @@ import { CollapsibleLevelBands } from './CollapsibleLevelBands';
 interface AcademicPassportViewProps {
   child: ChildRecord;
   isParent?: boolean;
+  /**
+   * Passport computed from Phoenix-MS (see portalPassport.ts). When present it
+   * replaces the one derived from the mock record — every figure on this screen
+   * then comes from the CRM. The level bands further down still read the app's
+   * own curriculum, which the CRM does not model.
+   */
+  passport?: AcademicPassport;
 }
 
-export function AcademicPassportView({ child, isParent = false }: AcademicPassportViewProps) {
+export function AcademicPassportView({ child, isParent = false, passport: given }: AcademicPassportViewProps) {
   const ui = useUI();
-  const passport: AcademicPassport = calculatePassport(child);
-  const levels = curriculumFor(child.id);
+  const passport: AcademicPassport = given ?? calculatePassport(child);
+  const levels = useCurriculum();
 
   /* One card owns the goal: tapping it opens the detailed ladder (the old
      standalone "O‘quv narvoni" card duplicated this job and was removed). */
@@ -133,7 +141,7 @@ export function AcademicPassportView({ child, isParent = false }: AcademicPasspo
           {/* Top Row: Level Pill */}
           <div className="flex items-center gap-2">
             <span className="inline-flex items-center rounded-full bg-white/20 px-2.5 py-0.5 font-sans text-xs font-bold text-white backdrop-blur-sm shadow-sm">
-              {t.pgCurrentLevelBadge(child.level)}
+              {t.pgCurrentLevelBadge(passport.now.levelCode)}
             </span>
           </div>
 
@@ -343,79 +351,68 @@ export function AcademicPassportView({ child, isParent = false }: AcademicPasspo
           style={auraStyle}
         >
           {/* One real answer: with the current pace, when does study finish? */}
-          <div className="flex items-center justify-between gap-4 pb-1">
-            {/* SVG Circular Ring Chart */}
-            <div className="relative flex shrink-0 items-center justify-center">
-              <svg width="84" height="84" viewBox="0 0 88 88" className="-rotate-90">
-                <defs>
-                  <linearGradient id="ringNeonBlue" x1="0%" y1="0%" x2="100%" y2="100%">
-                    <stop offset="0%" stopColor="#3B82F6" />
-                    <stop offset="100%" stopColor="#60A5FA" />
-                  </linearGradient>
-                  <linearGradient id="ringNeonEmerald" x1="0%" y1="0%" x2="100%" y2="100%">
-                    <stop offset="0%" stopColor="#10B981" />
-                    <stop offset="100%" stopColor="#34D399" />
-                  </linearGradient>
-                </defs>
+          <div className="flex items-center justify-between gap-5 pb-1">
+            {/* SVG Circular Ring Chart with label placed cleanly below */}
+            <div className="flex flex-col items-center shrink-0">
+              <div className="relative flex items-center justify-center">
+                <svg width="78" height="78" viewBox="0 0 88 88" className="-rotate-90">
+                  <defs>
+                    <linearGradient id="ringNeonBlue" x1="0%" y1="0%" x2="100%" y2="100%">
+                      <stop offset="0%" stopColor="#3B82F6" />
+                      <stop offset="100%" stopColor="#60A5FA" />
+                    </linearGradient>
+                    <linearGradient id="ringNeonEmerald" x1="0%" y1="0%" x2="100%" y2="100%">
+                      <stop offset="0%" stopColor="#10B981" />
+                      <stop offset="100%" stopColor="#34D399" />
+                    </linearGradient>
+                  </defs>
 
-                {/* Track Background */}
-                <circle
-                  cx="44"
-                  cy="44"
-                  r="38"
-                  fill="none"
-                  strokeWidth="8"
-                  className="stroke-slate-100 dark:stroke-slate-800"
-                />
+                  {/* Track Background */}
+                  <circle
+                    cx="44"
+                    cy="44"
+                    r="38"
+                    fill="none"
+                    strokeWidth="8"
+                    className="stroke-slate-100 dark:stroke-slate-800"
+                  />
 
-                {/* Animated Gradient Fill Ring without shadow */}
-                <circle
-                  cx="44"
-                  cy="44"
-                  r="38"
-                  fill="none"
-                  strokeWidth="8"
-                  strokeLinecap="round"
-                  stroke={isLate ? 'url(#ringNeonBlue)' : 'url(#ringNeonEmerald)'}
-                  strokeDasharray={circumference}
-                  strokeDashoffset={strokeDashoffset}
-                  className="transition-all duration-700 ease-out"
-                />
-              </svg>
+                  {/* Animated Gradient Fill Ring */}
+                  <circle
+                    cx="44"
+                    cy="44"
+                    r="38"
+                    fill="none"
+                    strokeWidth="8"
+                    strokeLinecap="round"
+                    stroke={isLate ? 'url(#ringNeonBlue)' : 'url(#ringNeonEmerald)'}
+                    strokeDasharray={circumference}
+                    strokeDashoffset={strokeDashoffset}
+                    className="transition-all duration-700 ease-out"
+                  />
+                </svg>
 
-              {/* Text Inside Circular Ring */}
-              <div className="absolute inset-0 flex flex-col items-center justify-center text-center">
-                <span className="font-display text-base font-black tabular-nums leading-none text-foreground">
-                  {pace.attendanceRate}%
-                </span>
-                <span className="mt-0.5 font-sans text-[9px] font-semibold uppercase tracking-wider text-mutedfg">
-                  {t.statAttendance}
-                </span>
+                {/* Percentage Only inside Ring */}
+                <div className="absolute inset-0 flex items-center justify-center">
+                  <span className="font-display text-lg font-black tabular-nums leading-none text-foreground">
+                    {pace.attendanceRate}%
+                  </span>
+                </div>
               </div>
+
+              {/* Label Cleanly Under Ring */}
+              <span className="mt-1 font-sans text-[11px] font-semibold text-mutedfg tracking-tight text-center">
+                {t.statAttendance}
+              </span>
             </div>
 
-            {/* Right Side: Milestone Date & Outcome */}
+            {/* Right Side: Milestone Date & Schedule */}
             <div className="min-w-0 flex-1 space-y-1">
-              <div className="flex items-center gap-1.5">
-                <span
-                  className={[
-                    'inline-flex items-center rounded-full px-2.5 py-0.5 font-sans text-xs font-bold',
-                    isLate
-                      ? 'bg-rose-50 text-rose-600 dark:bg-rose-950/50 dark:text-rose-400'
-                      : forecast.verdict === 'tight'
-                      ? 'bg-amber-50 text-amber-600 dark:bg-amber-950/50 dark:text-amber-400'
-                      : 'bg-emerald-50 text-emerald-600 dark:bg-emerald-950/50 dark:text-emerald-400'
-                  ].join(' ')}
-                >
-                  {forecast.verdictText}
-                </span>
-              </div>
-
-              <p className="font-display text-xl font-extrabold tracking-tight text-foreground sm:text-2xl">
+              <p className="font-display text-xl sm:text-2xl font-extrabold tracking-tight text-foreground leading-tight">
                 {forecast.forecastDateFormatted}
               </p>
 
-              <p className="font-sans text-xs text-mutedfg truncate">
+              <p className="font-sans text-xs text-mutedfg">
                 {t.pgPlanSchedule(t.pgTab3Lessons)}
               </p>
             </div>

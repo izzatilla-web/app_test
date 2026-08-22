@@ -1,4 +1,5 @@
 import React from 'react';
+import { useCurriculum } from '../useCurriculum';
 import { Sheet } from './Sheet';
 import { useUI } from '../ui';
 import { student } from '../mockData';
@@ -20,7 +21,7 @@ export function LevelMapSheet() {
   const ui = useUI();
   const { meta, percent } = useLevelIdentity();
   const accent = levelAccent(meta, ui.dark);
-  const curriculumLevels = curriculumFor(student.id);
+  const curriculumLevels = useCurriculum();
 
   function isCompleted(code: AcademicLevelCode): boolean {
     const level = curriculumLevels.find((entry) => entry.code === code);

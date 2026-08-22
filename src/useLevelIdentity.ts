@@ -1,8 +1,10 @@
 import { useMemo } from 'react';
+import { useCurriculum } from './useCurriculum';
 import { useUI } from './ui';
 import { student } from './mockData';
 import { curriculumFor } from './curriculum';
 import { currentPosition, levelProgress } from './access';
+import { appLevelOf } from './services/portalAdapters';
 import {
   nextLevelMeta,
   resolveLevelMeta,
@@ -26,11 +28,16 @@ export interface LevelIdentityState {
 /** The student's level identity + real curriculum progress inside it. */
 export function useLevelIdentity(): LevelIdentityState {
   const ui = useUI();
-  const curriculumLevels = curriculumFor(student.id);
+  const curriculumLevels = useCurriculum();
   const activePositionLevel = (currentPosition(curriculumLevels)?.level.code as AcademicLevelCode) || 'A2';
 
+  /* Phoenix-MS owns the student's level. Its rung (e.g. "A3.2") maps onto the
+     band this identity is drawn for (A3). Everything below it is the prototype
+     fallback, kept for the dev panel and for the moment before the CRM answers. */
+  const crmLevel = appLevelOf(ui.activeChild?.student.levelCode ?? null);
+
   // If the assigned/stored level is already completed (100%), advance to the active level
-  let code = (ui.studentLevel || activePositionLevel || student.level || 'A2') as AcademicLevelCode;
+  let code = (crmLevel || ui.studentLevel || activePositionLevel || student.level || 'A2') as AcademicLevelCode;
   const currentLvl = curriculumLevels.find((entry) => entry.code === code);
   if (currentLvl && levelProgress(currentLvl).percent === 100 && activePositionLevel) {
     code = activePositionLevel;

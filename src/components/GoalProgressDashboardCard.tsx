@@ -1,6 +1,8 @@
 import React from 'react';
+import { useCurriculum } from '../useCurriculum';
 import { ChevronRightIcon } from 'lucide-react';
 import { calculatePassport } from '../passport';
+import { calculatePassportFromPortal } from '../portalPassport';
 import { student } from '../mockData';
 import { curriculumFor } from '../curriculum';
 import { currentPosition, levelProgress } from '../access';
@@ -11,16 +13,36 @@ import { levelAccent, levelGlow, resolveLevelMeta } from '../types/levelIdentity
 
 export function GoalProgressDashboardCard() {
   const ui = useUI();
-  const passport = calculatePassport(student);
+  /* Phoenix-MS owns the figures; the mock record only stands in before the
+     portal data arrives. Exams are not needed here — this card shows the goal
+     ladder and the topic count, not the average score. */
+  const me = ui.activeChild;
+  const passport = me ?
+  calculatePassportFromPortal({
+    levelCode: me.student.levelCode,
+    topics: me.topics,
+    attendanceRate: me.student.attendanceRate,
+    attendanceSessions: me.student.attendanceSessions,
+    groupName: me.student.groupName,
+    exams: [],
+    weakPoints: me.weakPoints
+  }) :
+  calculatePassport(student);
   const { meta } = useLevelIdentity();
   const accent = levelAccent(meta, ui.dark);
 
-  const levels = curriculumFor(student.id);
+  const levels = useCurriculum();
   const goalMeta = resolveLevelMeta(passport.goal.requiredLevelCode);
 
-  // Determine active level from curriculum position
+  /* The level a student is on is Phoenix-MS's answer, never the app's own
+     curriculum guess — otherwise this card says A2 while the passport above it
+     says A3.2. `meta` already follows the CRM rung (see useLevelIdentity), and
+     `rungCode` is that rung in full for the label. */
+  const activeLevelCode = meta.code;
+  const rungCode = ui.activeChild?.student.levelCode || meta.code;
+  /* Read off the aligned curriculum, so the topic named here sits inside the
+     rung Phoenix-MS placed the student on. */
   const position = currentPosition(levels);
-  const activeLevelCode = position ? position.level.code : meta.code;
 
   // Every level on the path from A1 up to the goal level
   const goalPathLevels = levels
@@ -153,7 +175,7 @@ export function GoalProgressDashboardCard() {
           {/* Current Level Stat */}
           <div className="flex items-baseline justify-between gap-2">
             <span className="font-sans text-xs font-medium text-mutedfg">
-              Joriy daraja ({activeLevelCode}):
+              Joriy daraja ({rungCode}):
             </span>
             <span className="font-display text-sm sm:text-base font-bold text-foreground tabular-nums">
               {currentLevelData?.done || 0} / {currentLevelData?.total || 0} mavzu

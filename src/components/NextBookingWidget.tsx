@@ -6,7 +6,7 @@ import {
 import { useUI } from '../ui';
 import { haptic } from '../tokens';
 import { t } from '../strings';
-import { student, bookings as fallbackMockBookings, TODAY } from '../mockData';
+import { student, TODAY } from '../mockData';
 import { getMyBookings } from '../services/bookingApi';
 import type { BookingRecord } from '../types/booking';
 import {
@@ -28,7 +28,7 @@ export function NextBookingWidget() {
   const todayIso = useMemo(() => getTashkentTodayIso() || TODAY, []);
   const [allBookings, setAllBookings] = useState<BookingRecord[]>([]);
 
-  // Load fresh bookings from API / mock store
+  // The student's own bookings, from Phoenix-MS.
   useEffect(() => {
     let active = true;
     getMyBookings()
@@ -38,24 +38,10 @@ export function NextBookingWidget() {
         }
       })
       .catch(() => {
-        if (active) {
-          const adapted: BookingRecord[] = fallbackMockBookings.map((b) => {
-            const isCancelled = b.status === 'cancelled';
-            return {
-              id: b.id,
-              studentId: 1,
-              date: b.date,
-              timeSlotId: 'slot-1',
-              time: b.time,
-              purpose: b.purpose,
-              status: b.status === 'attended' ? 'attended' : 'booked',
-              cancelledAt: isCancelled ? '2026-08-01T12:00:00Z' : undefined,
-              cancelReason: isCancelled ? (b.cancelReason || 'Bekor qilingan') : undefined,
-              createdAt: new Date().toISOString()
-            };
-          });
-          setAllBookings(adapted);
-        }
+        /* Phoenix-MS is the only source of a booking. When it cannot be reached
+           the widget shows nothing — inventing sessions here would tell a
+           student they have a lesson the school has never heard of. */
+        if (active) setAllBookings([]);
       });
     return () => {
       active = false;
@@ -101,7 +87,10 @@ export function NextBookingWidget() {
   function handleNewBooking(e: React.MouseEvent) {
     e.stopPropagation();
     haptic('light');
-    const firstWeak = student.weakPoints?.[0];
+    /* Phoenix-MS keeps the open weak points on the student's own record, and
+       shows them to the student but never to a parent — so the purpose is
+       pre-filled from the CRM's words, not a mock topic. */
+    const firstWeak = ui.activeChild?.weakPoints.find((w) => !w.closedAt);
     ui.openSheet({
       key: 'new-booking-quick',
       detent: 'large',

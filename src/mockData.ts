@@ -1,6 +1,11 @@
 import { curriculumFor, masteredCount, topicCount } from './curriculum';
 
-export type Presence = 'present' | 'late' | 'absent' | 'pending' | 'none';
+/**
+ * `never_arrived` comes from Phoenix-MS: a trial student who never turned up.
+ * The CRM keeps it apart from `absent` on purpose — there is no discipline
+ * record to spoil and no billing to start — so the app must not flatten it.
+ */
+export type Presence = 'present' | 'late' | 'absent' | 'never_arrived' | 'pending' | 'none';
 export type Homework = 'done' | 'partial' | 'not' | '';
 export type Conspect = 'full' | 'partial' | '';
 export type Engagement = 'high' | 'medium' | 'low' | '';
@@ -92,6 +97,12 @@ export interface SupportSession {
   date: string;
   time: string;
   attended: boolean;
+  /**
+   * Phoenix-MS separates a session the student missed from one still ahead.
+   * Collapsing the two would tell a family "upcoming" about a lesson their
+   * child did not turn up to.
+   */
+  missed?: boolean;
 }
 
 export interface ChildRecord {

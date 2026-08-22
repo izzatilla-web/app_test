@@ -8,11 +8,21 @@ import { EmptyState } from '../components/EmptyState';
 import { Receipt } from './Receipt';
 import { t } from '../strings';
 import { formatSum, shortDate, haptic } from '../tokens';
-import type { ChildRecord, LedgerMonth } from '../mockData';
+import type { LedgerMonth } from '../mockData';
 import { useUI } from '../ui';
 import { ReceiptIcon } from 'lucide-react';
 
-export function MonthDetail({ month, child }: {month: LedgerMonth;child: ChildRecord;}) {
+/**
+ * Who the receipt is made out to. Only the three fields the receipt prints, so
+ * a Phoenix-MS student and a mock record both satisfy it.
+ */
+export interface ReceiptChild {
+  firstName: string;
+  lastName: string;
+  studentNo: number | string;
+}
+
+export function MonthDetail({ month, child }: {month: LedgerMonth;child: ReceiptChild;}) {
   const ui = useUI();
 
   return (

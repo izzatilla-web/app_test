@@ -158,8 +158,8 @@ export const LEVEL_SEQUENCE: LevelMeta[] = LEVELS.map((entry, index) => ({
   title: entry.title,
   targetExam: entry.targetExam,
   motto: entry.motto,
-  // The main path ends at D3; the E (geometry) track chains only within itself.
-  nextCode: entry.code === 'D3' ? null : LEVELS[index + 1]?.code ?? null
+  // Sequential journey A1 -> A2 ... -> D3 -> E1 -> E2 -> E3
+  nextCode: LEVELS[index + 1]?.code ?? null
 }));
 
 export const LEVEL_IDENTITIES: Record<string, LevelMeta> = Object.fromEntries(

@@ -1,4 +1,4 @@
-import React, { Suspense, lazy, useCallback, useMemo, useRef, useState } from 'react';
+import React, { Suspense, lazy, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   BookOpenIcon,
   CalendarCheckIcon,
@@ -17,6 +17,8 @@ import { SignIn } from './screens/SignIn';
 import { NewPassword } from './screens/NewPassword';
 import { BiometricSetup } from './screens/BiometricSetup';
 import { PinLock } from './screens/PinLock';
+import { ScreenLock } from './screens/ScreenLock';
+import { BiometricGate } from './screens/BiometricGate';
 import { StudentToday } from './screens/StudentToday';
 import { StudentLessons } from './screens/StudentLessons';
 import { StudentBookings } from './screens/StudentBookings';
@@ -34,6 +36,13 @@ import { t, loadStoredLocale, setLocale } from './strings';
 import type { Locale } from './strings';
 import { parent, student } from './mockData';
 import { GAMES_ENABLED } from './config';
+import { ApiError, setLockedHandler, setUnauthorizedHandler } from './services/http';
+import { changePassword, fetchMe, lockSession, login, logout as apiLogout, unlockSession } from './services/authApi';
+import { getMyChildren, getMyStudent } from './services/portalApi';
+import { isBiometricEnrolled, isBiometricSupported, verifyBiometrics } from './services/biometrics';
+import { isPortalRole } from './types/phoenixUser';
+import type { PhoenixUser } from './types/phoenixUser';
+import type { PortalBundle } from './types/portal';
 
 import type { AcademicLevelCode } from './types/levelIdentity';
 
@@ -51,6 +60,12 @@ const GAMES_TAB = 2;
 /** Where a blocked games route lands instead. */
 const GAMES_FALLBACK_TAB = 1;
 
+/** Idle time before the app asks Phoenix-MS to lock the session. */
+const AUTO_LOCK_MS = 5 * 60 * 1000;
+
+/** How long away from the app before it asks for a face again on return. */
+const AWAY_GATE_MS = 60 * 1000;
+
 const StudentArena = GAMES_ENABLED ?
 lazy(() => import('./screens/StudentArena').then((m) => ({ default: m.StudentArena }))) :
 null;
@@ -65,7 +80,27 @@ export function App() {
   const [dark, setDark] = useState(false);
   const [role, setRole] = useState<Role>('student');
   const [dataState, setDataState] = useState<DataState>('full');
-  const [failNext, setFailNext] = useState(false);
+  /** Authenticated Phoenix-MS account. The session itself lives in the httpOnly phoenix.sid cookie. */
+  const [user, setUser] = useState<PhoenixUser | null>(null);
+  /** 'pending' until the GET /api/auth/me probe settles on app start. */
+  const [bootstrap, setBootstrap] = useState<'pending' | 'authed' | 'anon'>('pending');
+  const [splashDone, setSplashDone] = useState(false);
+  /** The family's own records from Phoenix-MS; null while loading or after a failed load. */
+  const [portalChildren, setPortalChildren] = useState<PortalBundle[] | null>(null);
+  /** Bumping this re-runs the portal load. */
+  const [portalReload, setPortalReload] = useState(0);
+  /** True while Phoenix-MS holds this session locked — password to get back. */
+  const [locked, setLocked] = useState(false);
+  /**
+   * The device gate: shown after the app has been idle, opened by the phone's
+   * own face or fingerprint check. A lighter thing than the lock above — it
+   * reveals a session Phoenix-MS already granted, and a refusal escalates to
+   * the server lock rather than opening anything.
+   */
+  const [gated, setGated] = useState(false);
+  const [biometricReady, setBiometricReady] = useState(false);
+  /** Bumped when the profile turns quick unlock on or off. */
+  const [biometricTick, setBiometricTick] = useState(0);
   /* Games-only: tuition-overdue lock read by the game screens. Inert while
      GAMES_ENABLED is false; kept so the feature reactivates unchanged. */
   const [gameLocked, setGameLocked] = useState(false);
@@ -113,9 +148,272 @@ export function App() {
 
   const pop = useCallback(() => setStack((prev) => prev.slice(0, -1)), []);
 
+  /** Drop all client auth state and land on the sign-in screen. */
+  const resetToSignIn = useCallback(() => {
+    setUser(null);
+    setPortalChildren(null);
+    setLocked(false);
+    setGated(false);
+    setMode('auth');
+    setAuthStep('signin');
+    setStack([]);
+    setSheet(null);
+    setFullScreen(null);
+    setTab(1);
+  }, []);
+
+  /* ── Session bootstrap ──
+     On mount ask Phoenix-MS who owns the phoenix.sid cookie (if anyone). The
+     splash stays up until both the brand moment and this probe finish. */
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const me = await fetchMe({ on401: 'silent' });
+        if (cancelled) return;
+        if (me && isPortalRole(me.role)) {
+          setUser(me);
+          setRole(me.role);
+          /* A session locked before the app was closed stays locked — the lock
+             screen asks for the password, exactly as Phoenix-MS does. Signing
+             the family out instead would throw away a valid session and force a
+             full sign-in for the same password. */
+          setLocked(!!me.locked);
+          setBootstrap('authed');
+        } else {
+          setBootstrap('anon');
+        }
+      } catch {
+        // Server unreachable — the sign-in attempt will surface the error.
+        if (!cancelled) setBootstrap('anon');
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  /* Route out of the splash once the timer and the session probe both settle. */
+  useEffect(() => {
+    if (!splashDone || bootstrap === 'pending' || mode !== 'auth' || authStep !== 'splash') return;
+    if (bootstrap === 'authed' && user) {
+      if (user.mustChangePassword) {
+        setAuthStep('password');
+      } else {
+        /* Quick unlock stands between a live session and the screens, the way
+           a banking app asks the moment it opens. Read straight from storage:
+           the async support probe may not have answered yet. */
+        if (isBiometricEnrolled(user.id)) setGated(true);
+        setMode('app');
+      }
+    } else {
+      setAuthStep(pinEnabled ? 'pin' : 'signin');
+    }
+  }, [splashDone, bootstrap, mode, authStep, user, pinEnabled]);
+
+  /* A 401 on any authenticated call means the server session is gone —
+     invalidate the client state instead of showing stale protected data.
+     A 403 LOCKED means the session is locked (possibly from another device),
+     so the lock screen goes up over whatever is on screen. */
+  useEffect(() => {
+    setUnauthorizedHandler(resetToSignIn);
+    setLockedHandler(() => setLocked(true));
+    return () => {
+      setUnauthorizedHandler(null);
+      setLockedHandler(null);
+    };
+  }, [resetToSignIn]);
+
+  /* Is the quick unlock usable here — hardware present and this account enrolled? */
+  useEffect(() => {
+    let cancelled = false;
+    if (!user) {
+      setBiometricReady(false);
+      return;
+    }
+    isBiometricSupported().
+    then((supported) => {
+      if (!cancelled) setBiometricReady(supported && isBiometricEnrolled(user.id));
+    }).
+    catch(() => {
+      if (!cancelled) setBiometricReady(false);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [user, biometricTick]);
+
+  /** Locks the session on the server, then raises the lock screen. */
+  const lockNow = useCallback(async () => {
+    try {
+      await lockSession();
+    } catch {
+      /* Even if the call fails the screen still locks — the next request will
+         be refused anyway if the server did take it. */
+    }
+    setLocked(true);
+  }, []);
+
+  /* After a spell of inactivity the app closes itself.
+     · quick unlock on  → the device gate, opened by face or fingerprint
+     · quick unlock off → the server lock, opened by the account password
+     Phoenix-MS has no portal endpoint for the timeout, so the timer lives here. */
+  useEffect(() => {
+    if (mode !== 'app' || locked || gated) return;
+    const close = () => {
+      if (biometricReady) setGated(true);else
+      lockNow();
+    };
+    let timer = window.setTimeout(close, AUTO_LOCK_MS);
+    const bump = () => {
+      window.clearTimeout(timer);
+      timer = window.setTimeout(close, AUTO_LOCK_MS);
+    };
+    const events: (keyof WindowEventMap)[] = ['pointerdown', 'keydown', 'focus'];
+    events.forEach((name) => window.addEventListener(name, bump));
+    return () => {
+      window.clearTimeout(timer);
+      events.forEach((name) => window.removeEventListener(name, bump));
+    };
+  }, [mode, locked, gated, biometricReady, lockNow]);
+
+  /* Away and back: a phone keeps the page alive while the user is in another
+     app, so the idle timer above never fires. Ask again when they return. */
+  useEffect(() => {
+    if (mode !== 'app') return;
+    let hiddenAt = 0;
+    const onVisibility = () => {
+      if (document.hidden) {
+        hiddenAt = Date.now();
+        return;
+      }
+      if (!hiddenAt || Date.now() - hiddenAt < AWAY_GATE_MS) return;
+      hiddenAt = 0;
+      if (user && isBiometricEnrolled(user.id)) setGated(true);
+    };
+    document.addEventListener('visibilitychange', onVisibility);
+    return () => document.removeEventListener('visibilitychange', onVisibility);
+  }, [mode, user]);
+
+  /** Unlocks against Phoenix-MS. Returns a message to show, or null. */
+  const handleUnlock = useCallback(async (password: string): Promise<string | null> => {
+    try {
+      await unlockSession(password);
+    } catch (err) {
+      if (err instanceof ApiError) {
+        // Five wrong tries end the session outright — back to sign-in.
+        if (err.code === 'SESSION_ENDED') {
+          resetToSignIn();
+          setLocked(false);
+          return null;
+        }
+        if (err.status === 0) return t.authErrNetwork;
+        /* The CRM answers in English; the one a family can act on is shown in
+           their language, anything else in the server's own words. */
+        if (/wrong password/i.test(err.message)) return t.lockWrongPassword;
+        return err.message || t.authErrGeneric;
+      }
+      return t.authErrGeneric;
+    }
+    setLocked(false);
+    /* Anything asked for while the session was locked came back 403, so the
+       family data is empty behind this screen — read it again on the way in. */
+    setPortalReload((n) => n + 1);
+    return null;
+  }, [resetToSignIn]);
+
+  /* ── Portal data ──
+     The family's own records, straight from Phoenix-MS. A student login gets
+     exactly one bundle (themselves); a parent gets one per child. The server
+     scopes this by session, so no student id is sent from here. */
+  useEffect(() => {
+    if (!user || !isPortalRole(user.role) || mode !== 'app') return;
+    let cancelled = false;
+    setDataState('loading');
+    (async () => {
+      try {
+        const bundles = user.role === 'parent' ? await getMyChildren() : [await getMyStudent()];
+        if (cancelled) return;
+        setPortalChildren(bundles);
+        /* The CRM's own order decides which child the portal opens on. */
+        if (bundles[0]) setActiveChildId(bundles[0].student.id);
+        setDataState(bundles.length === 0 ? 'empty' : 'full');
+      } catch {
+        if (cancelled) return;
+        setPortalChildren(null);
+        setDataState('error');
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [user, mode, portalReload]);
+
+  /** Real sign-in against Phoenix-MS. Returns a localized error message, or null on success. */
+  const handleLogin = useCallback(async (username: string, password: string): Promise<string | null> => {
+    try {
+      const result = await login(username, password);
+      if (result.kind === 'needsCode') return t.authErrCode;
+      const nextUser = result.user;
+      if (!isPortalRole(nextUser.role)) {
+        // The server did open a session for this staff account — end it; the
+        // app has no staff screens.
+        apiLogout().catch(() => undefined);
+        return t.authErrRole;
+      }
+      setUser(nextUser);
+      setRole(nextUser.role);
+      setAuthStep(nextUser.mustChangePassword ? 'password' : 'biometric');
+      return null;
+    } catch (err) {
+      if (err instanceof ApiError) {
+        if (err.status === 401) return t.authError;
+        if (err.status === 429) return t.authErrTooMany;
+        if (err.status === 0) return t.authErrNetwork;
+      }
+      return t.authErrGeneric;
+    }
+  }, []);
+
+  /** Phoenix-MS demands consent on the first self-set password of a portal account. */
+  const needsConsent = !!(user && isPortalRole(user.role) && !user.consentAt);
+
+  /** Forced first-password change. Returns an error message, or null on success. */
+  const handlePasswordChange = useCallback(async (newPassword: string): Promise<string | null> => {
+    try {
+      await changePassword({ newPassword, ...(needsConsent ? { consent: true } : {}) });
+    } catch (err) {
+      if (err instanceof ApiError && err.status === 0) return t.authErrNetwork;
+      if (err instanceof ApiError && err.status === 400) return err.message || t.pwError;
+      return t.pwError;
+    }
+    // Refresh the account so mustChangePassword/consentAt reflect the server.
+    const me = await fetchMe({ on401: 'silent' }).catch(() => null);
+    setUser((prev) => {
+      if (me && isPortalRole(me.role)) return me;
+      return prev ? { ...prev, mustChangePassword: false } : prev;
+    });
+    setAuthStep('biometric');
+    return null;
+  }, [needsConsent]);
+
   const api: UIApi = useMemo(
     () => ({
       role,
+      user,
+      portalChildren,
+      activeChild:
+      portalChildren?.find((c) => c.student.id === activeChildId) ?? portalChildren?.[0] ?? null,
+      reloadPortal: () => setPortalReload((n) => n + 1),
+      lockNow,
+      refreshBiometrics: () => setBiometricTick((n) => n + 1),
+      refreshUser: () => {
+        fetchMe({ on401: 'silent' }).
+        then((me) => {
+          if (me && isPortalRole(me.role)) setUser(me);
+        }).
+        catch(() => undefined);
+      },
       dataState,
       gameLocked,
       activeChildId,
@@ -132,10 +430,11 @@ export function App() {
         setTab(resolveTab(next, role));
       },
       logout: () => {
-        setMode('auth');
-        setAuthStep('signin');
-        setStack([]);
-        setTab(1);
+        // Destroy the server session (clears the phoenix.sid cookie). Client
+        // state resets regardless; a failure only means the cookie survives,
+        // so surface it.
+        apiLogout().catch(() => toast(t.authErrNetwork, 'warning'));
+        resetToSignIn();
       },
       dark,
       setDark,
@@ -146,7 +445,7 @@ export function App() {
       studentLevel,
       setStudentLevel
     }),
-    [role, dataState, gameLocked, activeChildId, dark, unreadCount, language, studentLevel, pop, toast, setLanguage, setStudentLevel]
+    [role, user, portalChildren, dataState, gameLocked, activeChildId, dark, unreadCount, language, studentLevel, pop, toast, setLanguage, setStudentLevel, resetToSignIn, lockNow]
   );
 
   /* Games disabled → the O'yin tab is left out. Tab ids stay stable so the
@@ -224,29 +523,25 @@ export function App() {
   function renderAuth() {
     switch (authStep) {
       case 'splash':
-        return <Splash onDone={() => setAuthStep(pinEnabled ? 'pin' : 'signin')} />;
+        return <Splash onDone={() => setSplashDone(true)} />;
       case 'pin':
         return (
           <PinLock
-            name={role === 'student' ? student.firstName : parent.firstName}
-            seed={role === 'student' ? student.id : 9}
+            name={user?.firstName || (role === 'student' ? student.firstName : parent.firstName)}
+            seed={user?.id ?? (role === 'student' ? student.id : 9)}
             onUnlock={() => setMode('app')} />);
 
 
       case 'signin':
         return (
           <SignIn
-            failNext={failNext}
             language={language}
             setLanguage={setLanguage}
-            onSuccess={(nextRole) => {
-              setRole(nextRole);
-              setAuthStep('password');
-            }} />);
+            onLogin={handleLogin} />);
 
 
       case 'password':
-        return <NewPassword onDone={() => setAuthStep('biometric')} />;
+        return <NewPassword needsConsent={needsConsent} onSubmit={handlePasswordChange} />;
       default:
         return (
           <BiometricSetup
@@ -316,6 +611,29 @@ export function App() {
 
               {sheet && <div key={sheet.key}>{sheet.node}</div>}
               {fullScreen}
+
+              {/* Device gate: the quick way back in after idling. */}
+              {gated && !locked && user &&
+            <BiometricGate
+              name={user.firstName || user.username}
+              onVerify={() => verifyBiometrics(user.id)}
+              onPass={() => setGated(false)}
+              onUsePassword={() => {
+                setGated(false);
+                lockNow();
+              }} />
+            }
+
+              {/* Server-side lock: covers the app until Phoenix-MS accepts the password. */}
+              {locked &&
+            <ScreenLock
+              name={user?.firstName || user?.username || ''}
+              onUnlock={handleUnlock}
+              onSignOut={() => {
+                apiLogout().catch(() => undefined);
+                resetToSignIn();
+              }} />
+            }
             </>
           }
 
@@ -343,11 +661,10 @@ export function App() {
         setDataState={setDataState}
         gameLocked={gameLocked}
         setGameLocked={setGameLocked}
-        failNext={failNext}
-        setFailNext={setFailNext}
         studentLevel={studentLevel}
         setStudentLevel={setStudentLevel}
         onRestart={() => {
+          setSplashDone(false);
           setMode('auth');
           setAuthStep('splash');
           setStack([]);

@@ -24,24 +24,50 @@ import { Notifications } from './Notifications';
 import { t } from '../strings';
 import { formatSum, toneBg, toneFg } from '../tokens';
 import { examPill } from '../utils/status';
-import { childBalance, childById, children, currentDebtMonth, familyBalance, parent } from '../mockData';
+import { TODAY, parent } from '../mockData';
+import { firstNameOf } from '../types/phoenixUser';
+import { usePortalLessons } from '../usePortalLessons';
+import { usePortalExams } from '../usePortalExams';
+import { balanceOf, homeworkRateOf, toAppExam, toAppLedgerMonth, toAppSupportSession, todayLessonOf } from '../services/portalAdapters';
+import { getTashkentTodayIso } from '../utils/tashkentTime';
 import { useUI } from '../ui';
 
 export function ParentToday({ scrollSignal }: {scrollSignal: number;}) {
   const ui = useUI();
   const { dataState } = ui;
   const empty = dataState === 'empty';
-  const child = childById(ui.activeChildId);
-  const lesson = child.todayLesson;
-  const debtMonth = currentDebtMonth(child);
-  const balance = childBalance(child);
-  const latestExam = child.exams[0];
+  const child = ui.activeChild;
+  const siblings = ui.portalChildren ?? [];
+  const register = usePortalLessons(child?.student.id);
+  const examRows = usePortalExams(child?.student.id);
+
+  const todayIso = getTashkentTodayIso() || TODAY;
+  const lesson = child ?
+  todayLessonOf(child.student, register.lessons, todayIso) :
+  { has: false, time: '', group: '', teacher: '', status: 'none' as const };
+
+  /* Money: Phoenix-MS bills per child; the family line adds every child up. */
+  const balance = child ? balanceOf(child.ledger) : 0;
+  const familyBalance = siblings.reduce((sum, c) => sum + balanceOf(c.ledger), 0);
+  const debtMonth = child ?
+  child.ledger.map(toAppLedgerMonth).find((month) => month.balance > 0) :
+  undefined;
+
+  const latestExam = examRows.exams.length > 0 ? toAppExam(examRows.exams[0]) : undefined;
+  const homeworkRate = homeworkRateOf(register.lessons);
+  const topicsDone = child ? child.topics.filter((tp) => tp.overallStatus === 'completed').length : 0;
+  const topicsTotal = child ? child.topics.length : 0;
+  const switcherChildren = siblings.map((c) => ({ id: c.student.id, firstName: c.student.firstName }));
+
+  const childName = child?.student.firstName ?? '';
 
   const statusMeta = {
-    present: { icon: CheckCircle2Icon, tone: 'green' as const, title: t.parentPresent(child.firstName) },
-    late: { icon: ClockIcon, tone: 'amber' as const, title: t.parentLate(child.firstName) },
-    absent: { icon: XCircleIcon, tone: 'red' as const, title: t.parentAbsent(child.firstName) },
-    pending: { icon: HelpCircleIcon, tone: 'grey' as const, title: t.parentUnmarked(child.firstName) },
+    present: { icon: CheckCircle2Icon, tone: 'green' as const, title: t.parentPresent(childName) },
+    late: { icon: ClockIcon, tone: 'amber' as const, title: t.parentLate(childName) },
+    absent: { icon: XCircleIcon, tone: 'red' as const, title: t.parentAbsent(childName) },
+    /* Phoenix-MS keeps "never arrived" apart from "absent" — see the Presence type. */
+    never_arrived: { icon: CalendarOffIcon, tone: 'grey' as const, title: t.parentNeverArrived(childName) },
+    pending: { icon: HelpCircleIcon, tone: 'grey' as const, title: t.parentUnmarked(childName) },
     none: { icon: CalendarOffIcon, tone: 'grey' as const, title: t.todayNoLesson }
   }[lesson.status];
 
@@ -50,12 +76,12 @@ export function ParentToday({ scrollSignal }: {scrollSignal: number;}) {
   return (
     <ScrollScreen
       title={t.tabToday}
-      subtitle={t.todayGreeting(parent.firstName)}
+      subtitle={t.todayGreeting(firstNameOf(ui.user))}
       scrollKey="parent-today"
       scrollToTopSignal={scrollSignal}
       offline={dataState === 'offline'}
       belowTitle={
-      <ChildSwitcher children={children} activeId={ui.activeChildId} onSelect={ui.setActiveChildId} />
+      <ChildSwitcher children={switcherChildren} activeId={ui.activeChildId} onSelect={ui.setActiveChildId} />
       }
       trailing={
       <NavIconButton
@@ -73,10 +99,12 @@ export function ParentToday({ scrollSignal }: {scrollSignal: number;}) {
         </NavIconButton>
       }>
       
-      {dataState === 'loading' ?
+      {dataState === 'loading' || register.loading || examRows.loading ?
       <ScreenSkeleton /> :
-      dataState === 'error' ?
-      <ErrorState onRetry={() => undefined} /> :
+      dataState === 'error' || !child ?
+      <ErrorState onRetry={ui.reloadPortal} /> :
+      register.error || examRows.error ?
+      <ErrorState onRetry={() => {register.reload();examRows.reload();}} /> :
 
       <div className="space-y-8">
           <section className="px-4">
@@ -144,13 +172,13 @@ export function ParentToday({ scrollSignal }: {scrollSignal: number;}) {
 
           <StatTrio
           items={[
-          { value: `${child.attendanceRate}%`, label: t.statAttendance },
-          { value: `${child.homeworkRate}%`, label: t.statHomework },
-          { value: `${child.topicsDone}/${child.topicsTotal}`, label: t.statTopics }]
+          { value: `${child?.student.attendanceRate ?? 0}%`, label: t.statAttendance },
+          { value: homeworkRate !== null ? `${homeworkRate}%` : '—', label: t.statHomework },
+          { value: `${topicsDone}/${topicsTotal}`, label: t.statTopics }]
           } />
         
 
-          {!empty && <SupportSection sessions={child.supportSessions} />}
+          {!empty && child && <SupportSection sessions={child.sessions.map(toAppSupportSession)} />}
 
           {latestExam && !empty &&
         <ListGroup header={t.lastExamHeader}>

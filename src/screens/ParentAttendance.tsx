@@ -8,23 +8,40 @@ import { ErrorState } from '../components/ErrorState';
 import { t } from '../strings';
 import { toneFg, haptic, ASSETS_3D } from '../tokens';
 import type { Tone } from '../tokens';
-import { childById, children, TODAY } from '../mockData';
+import { TODAY } from '../mockData';
 import { useUI } from '../ui';
+import { usePortalLessons } from '../usePortalLessons';
+import { homeworkRateOf, toAppLesson } from '../services/portalAdapters';
 
 export function ParentAttendance({ scrollSignal }: { scrollSignal: number }) {
   const ui = useUI();
   const { dataState } = ui;
-  const child = childById(ui.activeChildId);
+  const child = ui.activeChild;
   const [month, setMonth] = useState({ year: 2026, month: 7 });
   const [selected, setSelected] = useState<string | null>(null);
 
-  const lessons = dataState === 'empty' ? [] : child.lessons;
+  /* Register rows for the selected child, straight from Phoenix-MS. */
+  const register = usePortalLessons(child?.student.id);
+  const lessons = dataState === 'empty' ? [] : register.lessons.map(toAppLesson);
+  const homeworkRate = homeworkRateOf(register.lessons);
+  const switcherChildren = (ui.portalChildren ?? []).map((c) => ({
+    id: c.student.id,
+    firstName: c.student.firstName
+  }));
 
+  /* One dot per day. Phoenix-MS can mark two lessons on the same date, so the
+     worst mark wins — an absence must never hide behind a later "present". */
+  const dotRank: Record<string, number> = { green: 0, amber: 1, red: 2 };
   const dots: Record<string, Tone> = {};
   lessons.forEach((lesson) => {
-    if (lesson.present === 'present') dots[lesson.date] = 'green';
-    else if (lesson.present === 'late') dots[lesson.date] = 'amber';
-    else if (lesson.present === 'absent') dots[lesson.date] = 'red';
+    const tone: Tone | null =
+    lesson.present === 'present' ? 'green' :
+    lesson.present === 'late' ? 'amber' :
+    lesson.present === 'absent' ? 'red' :
+    null;
+    if (!tone) return;
+    const current = dots[lesson.date];
+    if (!current || dotRank[tone] > dotRank[current]) dots[lesson.date] = tone;
   });
 
   function selectDay(iso: string) {
@@ -53,14 +70,19 @@ export function ParentAttendance({ scrollSignal }: { scrollSignal: number }) {
       offline={dataState === 'offline'}
       belowTitle={
         <div className="px-4 pb-2 pt-1">
-          <ChildSwitcher children={children} activeId={ui.activeChildId} onSelect={ui.setActiveChildId} />
+          <ChildSwitcher
+            children={switcherChildren}
+            activeId={ui.activeChildId}
+            onSelect={ui.setActiveChildId} />
         </div>
       }
     >
-      {dataState === 'loading' ? (
+      {dataState === 'loading' || register.loading ? (
         <ScreenSkeleton />
       ) : dataState === 'error' ? (
-        <ErrorState onRetry={() => undefined} />
+        <ErrorState onRetry={ui.reloadPortal} />
+      ) : register.error || !child ? (
+        <ErrorState onRetry={register.reload} />
       ) : (
         <div className="space-y-4 px-4 pb-20">
           {/* Top Hero Summary with 3D Calendar */}
@@ -70,12 +92,16 @@ export function ParentAttendance({ scrollSignal }: { scrollSignal: number }) {
                 Umumiy davomat
               </p>
               <p className="mt-1 font-display text-3xl font-bold tabular-nums text-foreground">
-                {child.attendanceRate}%
+                {child.student.attendanceRate ?? 0}%
               </p>
               <div className="mt-2 flex items-center gap-2 font-sans text-xs text-mutedfg">
-                <span>{child.lessonCount} ta dars o'tildi</span>
-                <span>·</span>
-                <span>{child.homeworkRate}% vazifalar</span>
+                <span>{child.student.attendanceSessions} ta dars o'tildi</span>
+                {homeworkRate !== null &&
+                <>
+                    <span>·</span>
+                    <span>{homeworkRate}% vazifalar</span>
+                  </>
+                }
               </div>
             </div>
 
@@ -129,7 +155,10 @@ export function ParentAttendance({ scrollSignal }: { scrollSignal: number }) {
                 Darslar tarixi
               </h3>
             </div>
-            <LessonList lessons={lessons} group={child.group} highlightDate={selected} />
+            <LessonList
+              lessons={lessons}
+              group={child.student.groupName ?? ''}
+              highlightDate={selected} />
           </div>
         </div>
       )}

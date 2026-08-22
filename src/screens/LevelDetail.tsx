@@ -1,12 +1,13 @@
 import { CheckIcon, ChevronRightIcon, PlayIcon, LockIcon } from 'lucide-react';
+import { useCurriculum } from '../useCurriculum';
 import { PushScreen } from '../components/ScrollScreen';
 import { StatusPill } from '../components/StatusPill';
-import { VideoSheet } from '../components/VideoSheet';
+import { TopicMaterialHubSheet } from '../components/TopicMaterialHubSheet';
 import { t } from '../strings';
 import { formatDuration, haptic, ASSETS_3D, getLevel3DAsset } from '../tokens';
 import { levelProgress, moduleExam, topicAccess } from '../access';
 import { curriculumFor } from '../curriculum';
-import type { CurriculumTopic } from '../curriculum';
+import type { CurriculumTopic, CurriculumModule } from '../curriculum';
 import { examPill } from '../utils/status';
 import type { ChildRecord } from '../mockData';
 import { useUI } from '../ui';
@@ -19,7 +20,7 @@ import { ModuleDetail } from './ModuleDetail';
  */
 export function LevelDetail({ child, levelId }: { child: ChildRecord; levelId: number }) {
   const ui = useUI();
-  const levels = curriculumFor(child.id);
+  const levels = useCurriculum();
   const currentLevel = levels.find((item) => item.id === levelId);
   if (!currentLevel) return null;
 
@@ -39,13 +40,24 @@ export function LevelDetail({ child, levelId }: { child: ChildRecord; levelId: n
     });
   }
 
-  function openVideo(topic: CurriculumTopic) {
-    if (!topic.content.videos.length) return;
+  function openTopicMaterials(topic: CurriculumTopic, module: CurriculumModule) {
+    const state = topicAccess(levels, topic);
+    if (state === 'locked') {
+      haptic('warning');
+      ui.toast('Avval oldingi darsni yakunlang!', 'info');
+      return;
+    }
     haptic('light');
     ui.openSheet({
-      key: `video-${topic.id}`,
-      detent: topic.content.videos.length > 1 ? 'large' : 'medium',
-      node: <VideoSheet topic={topic} />
+      key: `topic-hub-${topic.id}`,
+      detent: 'large',
+      node: (
+        <TopicMaterialHubSheet
+          topic={topic}
+          levelCode={currentLevel?.code}
+          moduleCode={module.code}
+        />
+      )
     });
   }
 
@@ -172,7 +184,7 @@ export function LevelDetail({ child, levelId }: { child: ChildRecord; levelId: n
                     <button
                       key={topic.id}
                       type="button"
-                      onClick={() => openVideo(topic)}
+                      onClick={() => openTopicMaterials(topic, module)}
                       className="flex w-full items-center gap-3.5 p-3.5 text-left transition-colors duration-100 active:bg-slate-50 dark:active:bg-slate-800 hover:bg-slate-50/60 dark:hover:bg-slate-800/40"
                     >
                       <span className="font-display text-sm font-bold text-slate-400 dark:text-slate-500 w-6 text-center">
@@ -190,6 +202,10 @@ export function LevelDetail({ child, levelId }: { child: ChildRecord; levelId: n
                         {completed ? (
                           <div className="flex h-7 w-7 items-center justify-center rounded-full bg-emerald-100 text-emerald-600 dark:bg-emerald-950 dark:text-emerald-400">
                             <CheckIcon size={13} strokeWidth={3} />
+                          </div>
+                        ) : locked ? (
+                          <div className="flex h-7 w-7 items-center justify-center rounded-full bg-slate-100 text-slate-400 dark:bg-slate-800 dark:text-slate-500">
+                            <LockIcon size={12} />
                           </div>
                         ) : (
                           <div className="flex h-7 w-7 items-center justify-center rounded-full bg-blue-600 text-white shadow-sm transition-transform active:scale-90">

@@ -22,12 +22,10 @@ export function CollapsibleLevelBands({ levels, child }: CollapsibleLevelBandsPr
   const currentTier = LEVEL_BANDS[currentBandLetter].tier;
 
   /**
-   * A band is open to the student when they have reached it on the main
-   * path, when it already holds studied topics, or when it is the parallel
-   * E (Geometriya) track — that one is open to every level.
+   * A band is open to the student only when they have reached it sequentially (A -> B -> C -> D -> E)
+   * or when it already holds studied topics.
    */
   function isReachable(band: string, doneTopics: number): boolean {
-    if (band === 'E') return true;
     if (doneTopics > 0) return true;
     const bandMeta = LEVEL_BANDS[band as LevelBandLetter];
     return bandMeta ? bandMeta.tier <= currentTier : false;

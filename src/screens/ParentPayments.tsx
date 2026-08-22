@@ -11,16 +11,24 @@ import { ErrorState } from '../components/ErrorState';
 import { MonthDetail } from './MonthDetail';
 import { t } from '../strings';
 import { formatSum } from '../tokens';
-import { childBalance, childById, children, familyBalance } from '../mockData';
 import type { LedgerMonth } from '../mockData';
 import { useUI } from '../ui';
+import { balanceOf, toAppLedgerMonth } from '../services/portalAdapters';
 
 export function ParentPayments({ scrollSignal }: {scrollSignal: number;}) {
   const ui = useUI();
   const { dataState } = ui;
-  const child = childById(ui.activeChildId);
-  const ledger: LedgerMonth[] = dataState === 'empty' ? [] : child.ledger;
-  const balance = childBalance(child);
+  const child = ui.activeChild;
+  const siblings = ui.portalChildren ?? [];
+  /* Phoenix-MS bills per child; the family total is every child's balance. */
+  const ledger: LedgerMonth[] =
+  dataState === 'empty' || !child ? [] : child.ledger.map(toAppLedgerMonth);
+  const balance = child ? balanceOf(child.ledger) : 0;
+  const familyBalance = siblings.reduce((sum, c) => sum + balanceOf(c.ledger), 0);
+  const switcherChildren = siblings.map((c) => ({
+    id: c.student.id,
+    firstName: c.student.firstName
+  }));
 
   return (
     <ScrollScreen
@@ -29,13 +37,16 @@ export function ParentPayments({ scrollSignal }: {scrollSignal: number;}) {
       scrollToTopSignal={scrollSignal}
       offline={dataState === 'offline'}
       belowTitle={
-      <ChildSwitcher children={children} activeId={ui.activeChildId} onSelect={ui.setActiveChildId} />
+      <ChildSwitcher
+        children={switcherChildren}
+        activeId={ui.activeChildId}
+        onSelect={ui.setActiveChildId} />
       }>
-      
+
       {dataState === 'loading' ?
       <ScreenSkeleton /> :
-      dataState === 'error' ?
-      <ErrorState onRetry={() => undefined} /> :
+      dataState === 'error' || !child ?
+      <ErrorState onRetry={ui.reloadPortal} /> :
 
       <div className="space-y-8">
           <section className="px-4">
@@ -59,7 +70,7 @@ export function ParentPayments({ scrollSignal }: {scrollSignal: number;}) {
                   </>
               }
               </div>
-              {children.length > 1 &&
+              {siblings.length > 1 &&
             <div className="border-t border-hairline px-4 py-3">
                   <p className="text-center font-sans text-footnote tabular-nums text-mutedfg">
                     {t.debtAllChildren(formatSum(familyBalance))}
@@ -82,7 +93,7 @@ export function ParentPayments({ scrollSignal }: {scrollSignal: number;}) {
             ui.push({
               key: `month-${month.month}`,
               backTitle: t.tabPayments,
-              node: <MonthDetail month={month} child={child} />
+              node: <MonthDetail month={month} child={child.student} />
             })
             }
             label={
